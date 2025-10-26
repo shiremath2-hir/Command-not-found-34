@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vision Assistant — Warnings & On-Demand Narration</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
+    .container{max-width:1400px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+    .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:28px;text-align:center}
+    .header h1{font-size:2rem;margin-bottom:6px}
+    .content{padding:24px}
+    .mode-selector{text-align:center;margin-bottom:18px}
+    .mode-btn{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:12px 28px;border:none;border-radius:999px;font-size:1rem;cursor:pointer;margin:0 8px;transition:transform .2s}
+    .mode-btn:hover{transform:translateY(-1px)}
+    .mode-btn.active{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);box-shadow:0 5px 20px rgba(79,172,254,.4)}
+    .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center}
+    .controls{text-align:center;margin:12px 0}
+    .btn{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;padding:12px 24px;border:none;border-radius:999px;font-size:1rem;cursor:pointer}
+    .btn.secondary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
+    .btn.danger{background:linear-gradient(135deg,#ff6b6b 0%,#ee5a6f 100%)}
+    .stage{position:relative;max-width:900px;margin:12px auto}
+    canvas, video, img{width:100%;border:3px solid #667eea;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+    .desc{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:14px;border-radius:12px;margin:12px auto;max-width:900px;font-size:1.05rem;line-height:1.5;box-shadow:0 10px 30px rgba(102,126,234,.3);display:none;text-align:center}
+    .desc.speaking{animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
+    .desc[data-processing="1"]::after{content:" • processing…";font-size:.95em;opacity:.85}
+    .error{background:#ff4757;color:#fff;padding:12px;border-radius:10px;margin:10px auto;max-width:900px;display:none}
+    .hint{opacity:.85;font-size:.9rem}
+    label > input{margin-right:6px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>👁️ Vision Assistant</h1>
+      <p class="hint">Silent by default. Warn on pedestrians ahead. “Tell me now” for a full description.</p>
+    </div>
+
+    <div class="content">
+      <div class="mode-selector">
+        <button class="mode-btn active" data-mode="photo">📸 Photo</button>
+        <button class="mode-btn" data-mode="video">📤 Video</button>
+      </div>
+
+      <!-- PHOTO MODE -->
+      <section id="photoSection">
+        <div class="controls row">
+          <button id="openCamBtn" class="btn">🎥 Open Camera</button>
+          <button id="captureBtn" class="btn secondary" style="display:none;">📷 Capture</button>
+          <button id="closeCamBtn" class="btn danger" style="display:none;">⏹️ Close Camera</button>
+
+          <!-- Upload Image via label -->
+          <label for="imageInput" class="btn secondary">📁 Upload Image</label>
+          <input id="imageInput" type="file" accept="image/*" capture="environment" style="display:none;" />
+
+          <!-- “Tell me now” forces narration -->
+          <button id="tellPhotoBtn" class="btn" style="display:none;">🗣️ Tell me now</button>
+        </div>
+
+        <div class="stage">
+          <video id="photoPreview" autoplay playsinline style="display:none;"></video>
+          <canvas id="photoCanvas" style="display:none;"></canvas>
+        </div>
+
+        <div id="photoDesc" class="desc" style="display:none;">
+          <span id="photoDescText">Ready.</span>
+        </div>
+        <div id="photoErr" class="error"></div>
+      </section>
+
+      <!-- VIDEO MODE -->
+      <section id="videoSection" style="display:none;">
+        <div class="controls row">
+          <label for="videoInput" class="btn secondary">📁 Upload Video</label>
+          <input id="videoInput" type="file" accept="video/*" style="display:none;" />
+          <button id="analyzeVideoBtn" class="btn" style="display:none;">▶️ Start</button>
+          <button id="stopAnalyzeBtn" class="btn danger" style="display:none;">⏹️ Stop</button>
+          <button id="tellVideoBtn" class="btn secondary" style="display:none;">🗣️ Tell me now</button>
+          <label class="hint"><input id="detailedMode" type="checkbox"> Detailed AI (slower)</label>
+          <label class="hint"><input id="autoSpeak" type="checkbox" checked> Auto-speak</label>
+        </div>
+
+        <div class="stage">
+          <video id="videoPreview" controls style="display:none;"></video>
+          <canvas id="videoCanvas" style="display:none;"></canvas>
+        </div>
+
+        <div id="videoDesc" class="desc" style="display:none;">
+          <span id="videoDescText">Ready.</span>
+        </div>
+        <div id="videoErr" class="error"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    // ===== CONFIG =====
+    const API_ENDPOINT = 'https://c3hcqo9h7b.execute-api.us-east-1.amazonaws.com/dev/items'; // <-- your API
+
+    // ===== SPEECH =====
+    let isSpeaking = false;
+    let autoSpeak = true;
+    document.getElementById('autoSpeak').addEventListener('change', e => autoSpeak = e.target.checked);
+    function speak(text, node){
+      if(!text) return;
+      isSpeaking = true;
+      node.classList.add('speaking');
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.0; u.pitch = 1.0;
+      u.onend = ()=>{ isSpeaking = false; node.classList.remove('speaking'); };
+      speechSynthesis.speak(u);
+    }
+
+    // ===== UTILS =====
+    function setProcessing(node, on){ if(on) node.setAttribute('data-processing','1'); else node.removeAttribute('data-processing'); }
+    function show(el){ el.style.display = ''; }
+    function hide(el){ el.style.display = 'none'; }
+    function showError(el, msg){ el.textContent = msg; show(el); console.error(msg); }
+    function clearError(el){ el.textContent=''; hide(el); }
+
+    // ===== MODE TOGGLE =====
+    const photoSection = document.getElementById('photoSection');
+    const videoSection = document.getElementById('videoSection');
+    document.querySelectorAll('.mode-btn').forEach(btn=>{
+      btn.addEventListener('click', function(){
+        document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+        this.classList.add('active');
+        const m = this.dataset.mode;
+        if(m==='photo'){ show(photoSection); hide(videoSection); stopAnalyzeVideo(); stopCamera(); }
+        else{ hide(photoSection); show(videoSection); stopCamera(); }
+      });
+    });
+
+    // =========================
+    // PHOTO MODE
+    // =========================
+    const openCamBtn = document.getElementById('openCamBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const closeCamBtn = document.getElementById('closeCamBtn');
+    const imageInput = document.getElementById('imageInput');
+    const tellPhotoBtn = document.getElementById('tellPhotoBtn');
+
+    const photoPreview = document.getElementById('photoPreview');
+    const photoCanvas = document.getElementById('photoCanvas');
+    const photoDesc = document.getElementById('photoDesc');
+    const photoDescText = document.getElementById('photoDescText');
+    const photoErr = document.getElementById('photoErr');
+    let photoStream = null;
+    let lastPhotoDesc = '';
+
+    openCamBtn.addEventListener('click', async ()=>{
+      try{
+        photoStream = await navigator.mediaDevices.getUserMedia({ video:{ width:{ideal:1280}, height:{ideal:720} } });
+        photoPreview.srcObject = photoStream;
+        await photoPreview.play();
+        show(photoPreview); show(captureBtn); show(closeCamBtn);
+        hide(photoCanvas); hide(tellPhotoBtn);
+        show(photoDesc); photoDescText.textContent = 'Camera ready. Capture when ready.';
+        clearError(photoErr);
+      }catch(e){ showError(photoErr, 'Camera access denied: '+e.message); }
+    });
+
+    captureBtn.addEventListener('click', ()=>{
+      if(!photoPreview.videoWidth) return;
+      photoCanvas.width = photoPreview.videoWidth;
+      photoCanvas.height = photoPreview.videoHeight;
+      photoCanvas.getContext('2d').drawImage(photoPreview,0,0,photoCanvas.width,photoCanvas.height);
+      show(photoCanvas); show(tellPhotoBtn);
+      show(photoDesc); photoDescText.textContent = 'Captured. Tap “Tell me now” for narration or leave silent.';
+      stopCamera(true);
+    });
+
+    closeCamBtn.addEventListener('click', ()=> stopCamera());
+
+    function stopCamera(keep=false){
+      try{ if(photoStream){ photoStream.getTracks().forEach(t=>t.stop()); photoStream=null; } }catch{}
+      if(!keep) hide(photoPreview);
+      hide(captureBtn); hide(closeCamBtn);
+    }
+
+    imageInput.addEventListener('change', e=>{
+      const f = e.target.files?.[0]; if(!f) return;
+      const r = new FileReader();
+      r.onload = ev=>{
+        const img = new Image();
+        img.onload = ()=>{
+          photoCanvas.width = img.width; photoCanvas.height = img.height;
+          photoCanvas.getContext('2d').drawImage(img,0,0);
+          show(photoCanvas); show(tellPhotoBtn);
+          show(photoDesc); photoDescText.textContent = 'Image ready. Tap “Tell me now” for narration.';
+          clearError(photoErr);
+        };
+        img.src = ev.target.result;
+      };
+      r.readAsDataURL(f);
+    });
+
+    tellPhotoBtn.addEventListener('click', async ()=>{
+      if(photoCanvas.width === 0) return;
+      const b64 = photoCanvas.toDataURL('image/jpeg', 0.9);
+      await sendToAPI({
+        image: b64,
+        continuous: false,
+        tell: true,          // force narration on demand
+        warnOnly: true
+      }, photoDesc, photoDescText, photoErr, (boxes)=>drawBoxesOnCanvas(photoCanvas, boxes), (text)=>{ lastPhotoDesc = text; });
+    });
+
+    function drawBoxesOnCanvas(canvas, boxes){
+      const ctx = canvas.getContext('2d');
+      // (canvas already contains the photo frame)
+      (boxes||[]).forEach((b,i)=>{
+        const color = `hsl(${(i*67)%360},70%,50%)`;
+        const W = canvas.width, H = canvas.height;
+        const x = b.box.left*W, y = b.box.top*H, w=b.box.width*W, h=b.box.height*H;
+        ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.strokeRect(x,y,w,h);
+        const label = `${b.label} ${Math.round(b.confidence)}%`;
+        const tw = ctx.measureText(label).width + 10;
+        ctx.fillStyle = color; ctx.fillRect(x, Math.max(0,y-22), tw,22);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Arial'; ctx.fillText(label, x+5, Math.max(16,y-6));
+      });
+    }
+
+    // =========================
+    // VIDEO MODE (upload + passive warnings + on-demand tell)
+    // =========================
+    const videoInput = document.getElementById('videoInput');
+    const analyzeVideoBtn = document.getElementById('analyzeVideoBtn');
+    const stopAnalyzeBtn = document.getElementById('stopAnalyzeBtn');
+    const tellVideoBtn = document.getElementById('tellVideoBtn');
+    const detailedMode = document.getElementById('detailedMode');
+
+    const videoPreview = document.getElementById('videoPreview');
+    const videoCanvas = document.getElementById('videoCanvas');
+    const videoDesc = document.getElementById('videoDesc');
+    const videoDescText = document.getElementById('videoDescText');
+    const videoErr = document.getElementById('videoErr');
+
+    let analyzing = false;
+    let lastBoxesHash = null;
+    let lastApiAt = 0;
+    let backoffMs = 0;
+    const MIN_INTERVAL_MS = 1000; // 1 req/sec
+    let lastVideoDesc = '';
+
+    videoInput.addEventListener('change', e=>{
+      const f = e.target.files?.[0]; if(!f) return;
+      const url = URL.createObjectURL(f);
+      videoPreview.src = url;
+      show(videoPreview); show(videoCanvas);
+      show(analyzeVideoBtn); hide(stopAnalyzeBtn); show(tellVideoBtn);
+      show(videoDesc); videoDescText.textContent = 'Video loaded. Start for passive warnings; “Tell me now” for narration.';
+      clearError(videoErr);
+    });
+
+    analyzeVideoBtn.addEventListener('click', ()=>{
+      if(!videoPreview.src){ showError(videoErr,'Please upload a video first.'); return; }
+      analyzing = true;
+      hide(analyzeVideoBtn); show(stopAnalyzeBtn);
+      passiveLoop(); // start passive monitoring (warn-only)
+    });
+
+    stopAnalyzeBtn.addEventListener('click', stopAnalyzeVideo);
+
+    function stopAnalyzeVideo(){
+      analyzing = false;
+      hide(stopAnalyzeBtn); show(analyzeVideoBtn);
+      setProcessing(videoDesc,false);
+    }
+
+    tellVideoBtn.addEventListener('click', async ()=>{
+      if(videoCanvas.width === 0){
+        // prime canvas with current frame if not started
+        await ensureVideoReady();
+        videoCanvas.width = videoPreview.videoWidth || 640;
+        videoCanvas.height = videoPreview.videoHeight || 360;
+        videoCanvas.getContext('2d').drawImage(videoPreview,0,0,videoCanvas.width,videoCanvas.height);
+      }
+      const b64 = videoCanvas.toDataURL('image/jpeg', 0.8);
+      await sendToAPI({
+        image: b64,
+        continuous: false,
+        tell: true,         // on-demand narration
+        warnOnly: true
+      }, videoDesc, videoDescText, videoErr, (boxes)=>redrawFrameAndBoxes(videoCanvas, videoPreview, boxes), (text)=>{ lastVideoDesc = text; });
+    });
+
+    async function ensureVideoReady(){
+      if(videoPreview.readyState < videoPreview.HAVE_METADATA){
+        await new Promise(r=> videoPreview.onloadedmetadata = r);
+      }
+      if(videoPreview.readyState < videoPreview.HAVE_ENOUGH_DATA){
+        await new Promise(r=> videoPreview.oncanplay = r);
+      }
+    }
+
+    async function passiveLoop(){
+      await ensureVideoReady();
+      videoCanvas.width = videoPreview.videoWidth || 640;
+      videoCanvas.height = videoPreview.videoHeight || 360;
+      const ctx = videoCanvas.getContext('2d');
+      await videoPreview.play();
+
+      while(analyzing){
+        const now = Date.now();
+        if(now - lastApiAt >= Math.max(MIN_INTERVAL_MS, backoffMs)){
+          ctx.drawImage(videoPreview,0,0,videoCanvas.width,videoCanvas.height);
+          const b64 = videoCanvas.toDataURL('image/jpeg', 0.8);
+
+          await sendToAPI({
+            image: b64,
+            continuous: true,           // continuous mode
+            tell: false,                // do not narrate unless alert
+            warnOnly: true
+          }, videoDesc, videoDescText, videoErr, (boxes)=>{
+            // boxes only redraw when changed
+            const nextHash = JSON.stringify(boxes||[]);
+            if(nextHash !== lastBoxesHash){ redrawFrameAndBoxes(videoCanvas, videoPreview, boxes); lastBoxesHash = nextHash; }
+            else{ ctx.drawImage(videoPreview,0,0,videoCanvas.width,videoCanvas.height); }
+          }, (text)=>{ if(text) lastVideoDesc = text; });
+
+          lastApiAt = Date.now();
+        }
+        await new Promise(r=> setTimeout(r, 200));
+        if(videoPreview.ended) break;
+      }
+      setProcessing(videoDesc,false);
+    }
+
+    function redrawFrameAndBoxes(canvas, video, boxes){
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      (boxes||[]).forEach((b,i)=>{
+        const color = `hsl(${(i*67)%360},70%,50%)`;
+        const W = canvas.width, H = canvas.height;
+        const x = b.box.left*W, y = b.box.top*H, w=b.box.width*W, h=b.box.height*H;
+        ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.strokeRect(x,y,w,h);
+        const label = `${b.label} ${Math.round(b.confidence)}%`;
+        const tw = ctx.measureText(label).width + 10;
+        ctx.fillStyle = color; ctx.fillRect(x, Math.max(0,y-22), tw,22);
+        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Arial'; ctx.fillText(label, x+5, Math.max(16,y-6));
+      });
+    }
+
+    // ===== Core API sender used by both modes =====
+    async function sendToAPI(payload, descNode, descTextNode, errNode, drawBoxesFn, setLastDescFn){
+      try{
+        setProcessing(descNode,true);
+        const res = await fetch(API_ENDPOINT, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if(res.ok){
+          // Boxes
+          drawBoxesFn(data.boundingBoxes || []);
+
+          // Text policy:
+          // - If backend decided to speak (alert or tell): show & speak.
+          // - If silent (aiDescription == null): keep current text.
+          if(data.aiDescription != null){
+            descTextNode.textContent = data.aiDescription || '…';
+            show(descNode);
+            if(data.shouldSpeak && autoSpeak && !isSpeaking){ speak(data.aiDescription, descNode); }
+            setLastDescFn(data.aiDescription || '');
+          }else{
+            // stay silent; keep last description on screen
+            show(descNode);
+          }
+
+          clearError(errNode);
+          // gentle backoff reset on success
+          backoffMs = 0;
+        }else{
+          showError(errNode, 'API Error: ' + (data.error || res.status));
+          backoffMs = Math.min(5000, (backoffMs||1000)*1.5);
+        }
+      }catch(e){
+        showError(errNode, 'Connection error: ' + e.message);
+        backoffMs = Math.min(5000, (backoffMs||1000)*1.5);
+      }finally{
+        setProcessing(descNode,false);
+      }
+    }
+  </script>
+</body>
+</html>
