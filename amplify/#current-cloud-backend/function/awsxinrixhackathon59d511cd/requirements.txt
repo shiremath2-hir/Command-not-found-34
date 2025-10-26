@@ -1,0 +1,2 @@
+cd /Users/bhoomikaganapuram/Desktop/Awsxinrixhackathon/amplify/backend/function/awsxinrixhackathon59d511cd
+touch requirements.txt
