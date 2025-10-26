@@ -1,0 +1,122 @@
+{
+  "providers": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-awsxinrixhackathon-dev-c1e4d-authRole",
+      "UnauthRoleArn": "arn:aws:iam::496268125027:role/amplify-awsxinrixhackathon-dev-c1e4d-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::496268125027:role/amplify-awsxinrixhackathon-dev-c1e4d-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+      "UnauthRoleName": "amplify-awsxinrixhackathon-dev-c1e4d-unauthRole",
+      "StackName": "amplify-awsxinrixhackathon-dev-c1e4d",
+      "StackId": "arn:aws:cloudformation:us-east-1:496268125027:stack/amplify-awsxinrixhackathon-dev-c1e4d/c348a860-b1d3-11f0-ae13-0eeac9154e09",
+      "AmplifyAppId": "d2xx5fm8i6qv6e"
+    }
+  },
+  "function": {
+    "awsxinrixhackathon59d511cd": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2025-10-26T03:12:25.775Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-10-26T03:12:26.573Z",
+      "distZipFilename": "awsxinrixhackathon59d511cd-4d355355764a485a7775-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+        "s3Key": "amplify-builds/awsxinrixhackathon59d511cd-4d355355764a485a7775-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/function/awsxinrixhackathon59d511cd-cloudformation-template.json",
+        "logicalId": "functionawsxinrixhackathon59d511cd"
+      },
+      "lastPushTimeStamp": "2025-10-26T03:33:16.371Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::496268125027:role/awsxinrixhackathonLambdaRolefb269443-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:496268125027:function:awsxinrixhackathon59d511cd-dev",
+        "Name": "awsxinrixhackathon59d511cd-dev",
+        "LambdaExecutionRole": "awsxinrixhackathonLambdaRolefb269443-dev"
+      },
+      "lastPushDirHash": "M5SUvJHZwuFoHLh4bU934GEp4Vw="
+    },
+    "awsxinrixhackathon19e0a6eb": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2025-10-25T23:45:10.433Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-10-25T23:45:11.650Z",
+      "distZipFilename": "awsxinrixhackathon19e0a6eb-43497531765471387364-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+        "s3Key": "amplify-builds/awsxinrixhackathon19e0a6eb-43497531765471387364-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/function/awsxinrixhackathon19e0a6eb-cloudformation-template.json",
+        "logicalId": "functionawsxinrixhackathon19e0a6eb"
+      },
+      "lastPushTimeStamp": "2025-10-26T03:33:16.373Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::496268125027:role/awsxinrixhackathonLambdaRole61c9860f-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:496268125027:function:awsxinrixhackathon19e0a6eb-dev",
+        "Name": "awsxinrixhackathon19e0a6eb-dev",
+        "LambdaExecutionRole": "awsxinrixhackathonLambdaRole61c9860f-dev"
+      },
+      "lastPushDirHash": "CIu1vTq8sdowL2oG2edeJRFyn8c="
+    },
+    "NavigationAI": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "lastBuildTimeStamp": "2025-10-26T03:31:46.274Z",
+      "lastBuildType": "PROD",
+      "lastPackageTimeStamp": "2025-10-26T03:31:48.842Z",
+      "distZipFilename": "NavigationAI-302f73463156646d6b56-build.zip",
+      "s3Bucket": {
+        "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+        "s3Key": "amplify-builds/NavigationAI-302f73463156646d6b56-build.zip"
+      },
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/function/NavigationAI-cloudformation-template.json",
+        "logicalId": "functionNavigationAI"
+      },
+      "lastPushTimeStamp": "2025-10-26T03:33:16.849Z",
+      "output": {
+        "LambdaExecutionRoleArn": "arn:aws:iam::496268125027:role/awsxinrixhackathonLambdaRole190e2b62-dev",
+        "Region": "us-east-1",
+        "Arn": "arn:aws:lambda:us-east-1:496268125027:function:NavigationAI-dev",
+        "Name": "NavigationAI-dev",
+        "LambdaExecutionRole": "awsxinrixhackathonLambdaRole190e2b62-dev"
+      },
+      "lastPushDirHash": "0/sF1VdmkValvjE8cD8S9jdGWZw="
+    }
+  },
+  "api": {
+    "api5414620e": {
+      "service": "API Gateway",
+      "providerPlugin": "awscloudformation",
+      "dependsOn": [
+        {
+          "category": "function",
+          "resourceName": "awsxinrixhackathon59d511cd",
+          "attributes": [
+            "Name",
+            "Arn"
+          ]
+        }
+      ],
+      "providerMetadata": {
+        "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/api/api5414620e-cloudformation-template.json",
+        "logicalId": "apiapi5414620e"
+      },
+      "lastPushTimeStamp": "2025-10-26T03:33:16.375Z",
+      "output": {
+        "ApiName": "api5414620e",
+        "RootUrl": "https://c3hcqo9h7b.execute-api.us-east-1.amazonaws.com/dev",
+        "ApiId": "c3hcqo9h7b"
+      },
+      "lastPushDirHash": "Dp/7eBVRcESwc2AGi8zUA9ogp8E="
+    }
+  }
+}
