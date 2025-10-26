@@ -16,10 +16,92 @@
     }
   },
   "function": {
+    "NavigationAI": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "VoiceProcessing": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "awsxinrixhackathon19e0a6eb": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "awsxinrixhackathon59d511cd": {
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_NavigationAI_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "NavigationAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_NavigationAI_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "NavigationAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_VoiceProcessing_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "VoiceProcessing"
+        }
+      ]
+    },
+    "AMPLIFY_function_VoiceProcessing_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "VoiceProcessing"
+        }
+      ]
+    },
+    "AMPLIFY_function_awsxinrixhackathon19e0a6eb_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "awsxinrixhackathon19e0a6eb"
+        }
+      ]
+    },
+    "AMPLIFY_function_awsxinrixhackathon19e0a6eb_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "awsxinrixhackathon19e0a6eb"
+        }
+      ]
+    },
+    "AMPLIFY_function_awsxinrixhackathon59d511cd_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "awsxinrixhackathon59d511cd"
+        }
+      ]
+    },
+    "AMPLIFY_function_awsxinrixhackathon59d511cd_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "awsxinrixhackathon59d511cd"
+        }
+      ]
     }
   }
 }
