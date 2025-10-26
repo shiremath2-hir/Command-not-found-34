@@ -1,0 +1,34 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-awsxinrixhackathon-dev-c1e4d-authRole",
+      "UnauthRoleArn": "arn:aws:iam::496268125027:role/amplify-awsxinrixhackathon-dev-c1e4d-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::496268125027:role/amplify-awsxinrixhackathon-dev-c1e4d-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+      "UnauthRoleName": "amplify-awsxinrixhackathon-dev-c1e4d-unauthRole",
+      "StackName": "amplify-awsxinrixhackathon-dev-c1e4d",
+      "StackId": "arn:aws:cloudformation:us-east-1:496268125027:stack/amplify-awsxinrixhackathon-dev-c1e4d/c348a860-b1d3-11f0-ae13-0eeac9154e09",
+      "AmplifyAppId": "d2xx5fm8i6qv6e"
+    },
+    "categories": {
+      "function": {
+        "awsxinrixhackathon59d511cd": {
+          "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+          "s3Key": "amplify-builds/awsxinrixhackathon59d511cd-4d355355764a485a7775-build.zip"
+        },
+        "awsxinrixhackathon19e0a6eb": {
+          "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+          "s3Key": "amplify-builds/awsxinrixhackathon19e0a6eb-43497531765471387364-build.zip"
+        },
+        "NavigationAI": {
+          "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+          "s3Key": "amplify-builds/NavigationAI-302f73463156646d6b56-build.zip"
+        }
+      },
+      "api": {
+        "api5414620e": {}
+      }
+    }
+  }
+}
