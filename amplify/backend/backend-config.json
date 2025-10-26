@@ -21,6 +21,12 @@
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
     },
+    "VoiceProcessing": {
+      "build": true,
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
     "awsxinrixhackathon19e0a6eb": {
       "build": true,
       "providerPlugin": "awscloudformation",
@@ -46,6 +52,22 @@
         {
           "category": "function",
           "resourceName": "NavigationAI"
+        }
+      ]
+    },
+    "AMPLIFY_function_VoiceProcessing_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "VoiceProcessing"
+        }
+      ]
+    },
+    "AMPLIFY_function_VoiceProcessing_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "VoiceProcessing"
         }
       ]
     },
