@@ -13,7 +13,25 @@
     },
     "categories": {
       "function": {
-        "awsxinrixhackathon59d511cd": {}
+        "awsxinrixhackathon19e0a6eb": {
+          "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+          "s3Key": "amplify-builds/awsxinrixhackathon19e0a6eb-43497531765471387364-build.zip"
+        },
+        "awsxinrixhackathon59d511cd": {
+          "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+          "s3Key": "amplify-builds/awsxinrixhackathon59d511cd-7a6f7945716c69324d6f-build.zip"
+        },
+        "NavigationAI": {
+          "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+          "s3Key": "amplify-builds/NavigationAI-454b336f754d3957734d-build.zip"
+        },
+        "VoiceProcessing": {
+          "deploymentBucketName": "amplify-awsxinrixhackathon-dev-c1e4d-deployment",
+          "s3Key": "amplify-builds/VoiceProcessing-31645845374b644d7846-build.zip"
+        }
+      },
+      "api": {
+        "api5414620e": {}
       }
     }
   }
