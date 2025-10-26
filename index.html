@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blind Navigation System - AccessOne</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .voice-active {
+            background: linear-gradient(45deg, #f56565, #ed8936);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 min-h-screen text-white">
+    
+    <!-- Header -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center">
+                        <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold">AccessOne</h1>
+                        <p class="text-white/70">Navigation for the Visually Impaired</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-white/70">Status</div>
+                    <div id="systemStatus" class="text-lg font-bold text-green-400">Ready</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Controls -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            
+            <!-- Voice Control -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                    Voice Commands
+                </h2>
+                
+                <button id="voiceBtn" onclick="toggleVoiceCommand()" 
+                    class="w-full py-8 mb-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-xl font-bold text-xl transition-all transform hover:scale-105 shadow-lg">
+                    🎤 Tap to Speak
+                </button>
+
+                <div id="voiceStatus" class="text-center py-3 px-4 bg-white/5 rounded-lg mb-3">
+                    <span class="text-white/70">Say: "Navigate to [place]" or "Help"</span>
+                </div>
+
+                <div id="recognizedText" class="p-4 bg-black/30 rounded-lg min-h-[80px] border border-white/10">
+                    <div class="text-sm text-white/50 mb-1">You said:</div>
+                    <div id="commandText" class="text-lg font-medium">-</div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+                <h2 class="text-2xl font-bold mb-4">Quick Actions</h2>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="whereAmI()" class="p-4 bg-blue-500/20 hover:bg-blue-500/30 rounded-xl border border-blue-400/30 transition">
+                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        </svg>
+                        <div class="font-semibold">Where Am I?</div>
+                    </button>
+
+                    <button onclick="detectObstacles()" class="p-4 bg-yellow-500/20 hover:bg-yellow-500/30 rounded-xl border border-yellow-400/30 transition">
+                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        <div class="font-semibold">Detect Obstacles</div>
+                    </button>
+
+                    <button onclick="describeSurroundings()" class="p-4 bg-green-500/20 hover:bg-green-500/30 rounded-xl border border-green-400/30 transition">
+                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <div class="font-semibold">Describe Scene</div>
+                    </button>
+
+                    <button onclick="sendEmergency()" class="p-4 bg-red-500/20 hover:bg-red-500/30 rounded-xl border border-red-400/30 transition">
+                        <svg class="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <div class="font-semibold text-red-300">Emergency</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Section -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                </svg>
+                Navigation
+            </h2>
+
+            <div class="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Starting Location</label>
+                    <input type="text" id="startLocation" placeholder="Current location" 
+                        class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-400 text-white placeholder-white/50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Destination</label>
+                    <input type="text" id="endLocation" placeholder="Enter destination" 
+                        class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:border-blue-400 text-white placeholder-white/50">
+                </div>
+            </div>
+
+            <button onclick="startNavigation()" 
+                class="w-full py-4 bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 rounded-lg font-bold text-lg transition-all">
+                🧭 Start Navigation
+            </button>
+        </div>
+
+        <!-- Camera Feed -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Live Camera Feed</h2>
+                <button onclick="toggleCamera()" id="cameraToggle" 
+                    class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg font-medium transition">
+                    📹 Start Camera
+                </button>
+            </div>
+
+            <div class="relative bg-black rounded-xl overflow-hidden" style="aspect-ratio: 16/9;">
+                <video id="videoFeed" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="overlayCanvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                
+                <div id="cameraStatus" class="absolute top-4 left-4 px-4 py-2 bg-black/70 rounded-lg">
+                    <span class="text-sm">Camera Off</span>
+                </div>
+
+                <div id="dangerAlert" class="hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-red-500 px-8 py-4 rounded-xl font-bold text-2xl animate-pulse">
+                    ⚠️ DANGER DETECTED
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Display -->
+        <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+            <h2 class="text-2xl font-bold mb-4">Status & Warnings</h2>
+            
+            <div id="results" class="space-y-3">
+                <div class="p-4 bg-white/5 rounded-lg">
+                    <div class="text-sm text-white/50 mb-1">System Ready</div>
+                    <div class="text-lg">Awaiting commands...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Hidden audio element for playback -->
+    <audio id="audioPlayer" style="display:none;"></audio>
+
+    <script>
+        // Configuration
+        const API_URL = 'https://c3hcqo9h7b.execute-api.us-east-1.amazonaws.com/dev/navigation';
+        const GRAPHHOPPER_KEY = 'f0c161ef-891e-4428-9b98-c0da7de3fe25';
+
+        // State
+        let cameraActive = false;
+        let videoStream = null;
+        let recognition = null;
+        let isListening = false;
+        let currentLocation = null;
+
+        // Initialize Speech Recognition
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const command = event.results[0][0].transcript;
+                document.getElementById('commandText').textContent = command;
+                speak(`You said: ${command}`);
+                processVoiceCommand(command);
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                speak('Sorry, I could not understand that');
+                isListening = false;
+                updateVoiceButton();
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                updateVoiceButton();
+            };
+        }
+
+        // Get user location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLocation = [position.coords.latitude, position.coords.longitude];
+                    document.getElementById('startLocation').value = 'Current Location';
+                },
+                (error) => console.error('Location error:', error)
+            );
+        }
+
+        // Voice Command
+        function toggleVoiceCommand() {
+            if (!recognition) {
+                speak('Voice recognition not supported in this browser');
+                return;
+            }
+
+            if (isListening) {
+                recognition.stop();
+                isListening = false;
+            } else {
+                document.getElementById('commandText').textContent = 'Listening...';
+                speak('Listening');
+                recognition.start();
+                isListening = true;
+            }
+            updateVoiceButton();
+        }
+
+        function updateVoiceButton() {
+            const btn = document.getElementById('voiceBtn');
+            if (isListening) {
+                btn.classList.add('voice-active');
+                btn.textContent = '🎤 Listening...';
+            } else {
+                btn.classList.remove('voice-active');
+                btn.textContent = '🎤 Tap to Speak';
+            }
+        }
+
+        function processVoiceCommand(command) {
+            const cmd = command.toLowerCase();
+
+            if (cmd.includes('navigate') || cmd.includes('go to')) {
+                const dest = cmd.replace('navigate to', '').replace('go to', '').trim();
+                if (dest) {
+                    document.getElementById('endLocation').value = dest;
+                    startNavigation();
+                } else {
+                    speak('Where would you like to go?');
+                }
+            } else if (cmd.includes('where am i')) {
+                whereAmI();
+            } else if (cmd.includes('detect') || cmd.includes('obstacle')) {
+                detectObstacles();
+            } else if (cmd.includes('describe') || cmd.includes('what')) {
+                describeSurroundings();
+            } else if (cmd.includes('emergency') || cmd.includes('help')) {
+                sendEmergency();
+            } else if (cmd.includes('help')) {
+                speak('You can say: navigate to a location, where am I, detect obstacles, describe surroundings, or emergency');
+            } else {
+                speak('Command not recognized. Say help for available commands.');
+            }
+        }
+
+        // Text to Speech
+        function speak(text) {
+            console.log('Speaking:', text);
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            speechSynthesis.speak(utterance);
+            
+            addResult('🔊 Voice', text, 'bg-blue-500/20');
+        }
+
+        // Play audio from base64
+        function playAudioBase64(audioBase64) {
+            if (!audioBase64) return;
+            
+            const audio = document.getElementById('audioPlayer');
+            audio.src = `data:audio/mp3;base64,${audioBase64}`;
+            audio.play().catch(err => console.error('Audio play error:', err));
+        }
+
+        // Camera Functions
+        async function toggleCamera() {
+            if (cameraActive) {
+                stopCamera();
+            } else {
+                await startCamera();
+            }
+        }
+
+        async function startCamera() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { width: 1280, height: 720 } 
+                });
+                
+                const video = document.getElementById('videoFeed');
+                video.srcObject = videoStream;
+                
+                cameraActive = true;
+                document.getElementById('cameraToggle').textContent = '⏹️ Stop Camera';
+                document.getElementById('cameraStatus').innerHTML = '<span class="text-sm text-green-400">● Camera Active</span>';
+                
+                speak('Camera started');
+            } catch (error) {
+                console.error('Camera error:', error);
+                speak('Cannot access camera');
+            }
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            const video = document.getElementById('videoFeed');
+            video.srcObject = null;
+            
+            cameraActive = false;
+            document.getElementById('cameraToggle').textContent = '📹 Start Camera';
+            document.getElementById('cameraStatus').innerHTML = '<span class="text-sm">Camera Off</span>';
+            
+            speak('Camera stopped');
+        }
+
+        // Capture image from video
+        function captureImage() {
+            const video = document.getElementById('videoFeed');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0);
+            
+            return canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        }
+
+        // Navigation
+        async function startNavigation() {
+            const start = document.getElementById('startLocation').value;
+            const end = document.getElementById('endLocation').value;
+
+            if (!end) {
+                speak('Please enter a destination');
+                return;
+            }
+
+            speak('Calculating route');
+            addResult('🧭 Navigation', 'Calculating optimal route...', 'bg-yellow-500/20');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'get_route',
+                        start_name: start || 'Current Location',
+                        end_name: end,
+                        mode: 'foot',
+                        graphhopper_key: GRAPHHOPPER_KEY
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    const body = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+                    const route = body.route;
+                    
+                    const summary = `Route found. Distance: ${route.distance_km} kilometers. Time: ${route.duration_minutes} minutes. ${body.total_warnings} warnings.`;
+                    speak(summary);
+                    addResult('✅ Route Ready', summary, 'bg-green-500/20');
+
+                    // Show instructions
+                    if (body.instructions) {
+                        body.instructions.forEach((inst, i) => {
+                            setTimeout(() => {
+                                speak(inst.full_text);
+                                if (inst.warnings && inst.warnings.length > 0) {
+                                    inst.warnings.forEach(w => {
+                                        if (w.priority === 'high' || w.priority === 'critical') {
+                                            speak(w.message);
+                                        }
+                                    });
+                                }
+                            }, i * 3000);
+                        });
+                    }
+                } else {
+                    const errorMsg = data.error || 'Route calculation failed';
+                    speak(errorMsg);
+                    addResult('❌ Error', errorMsg, 'bg-red-500/20');
+                }
+            } catch (error) {
+                console.error('Navigation error:', error);
+                speak('Navigation failed. Please try again.');
+                addResult('❌ Error', error.message, 'bg-red-500/20');
+            }
+        }
+
+        // Obstacle Detection
+        async function detectObstacles() {
+            if (!cameraActive) {
+                speak('Please start the camera first');
+                return;
+            }
+
+            speak('Detecting obstacles');
+            addResult('👁️ Detection', 'Analyzing surroundings...', 'bg-yellow-500/20');
+
+            try {
+                const imageBase64 = captureImage();
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'detect_obstacles',
+                        image: imageBase64,
+                        location: currentLocation
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    const body = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+                    
+                    // Show danger alert
+                    if (body.danger_level > 5) {
+                        document.getElementById('dangerAlert').classList.remove('hidden');
+                        setTimeout(() => {
+                            document.getElementById('dangerAlert').classList.add('hidden');
+                        }, 3000);
+                    }
+
+                    // Announce warnings
+                    if (body.warnings && body.warnings.length > 0) {
+                        body.warnings.forEach(w => {
+                            speak(w.message);
+                            addResult(`⚠️ ${w.type}`, w.message, w.priority === 'critical' ? 'bg-red-500/30' : 'bg-yellow-500/20');
+                        });
+                    } else {
+                        speak('Path is clear');
+                        addResult('✅ Clear', 'No obstacles detected', 'bg-green-500/20');
+                    }
+
+                    // Play audio warning
+                    if (body.audio_warning) {
+                        playAudioBase64(body.audio_warning);
+                    }
+                }
+            } catch (error) {
+                console.error('Obstacle detection error:', error);
+                speak('Detection failed');
+            }
+        }
+
+        // Describe Surroundings
+        async function describeSurroundings() {
+            if (!cameraActive) {
+                speak('Please start the camera first');
+                return;
+            }
+
+            speak('Analyzing surroundings');
+            addResult('🔍 Analysis', 'Describing scene...', 'bg-yellow-500/20');
+
+            try {
+                const imageBase64 = captureImage();
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'describe_surroundings',
+                        image: imageBase64,
+                        location: currentLocation
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    const body = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+                    
+                    speak(body.description);
+                    addResult('📝 Scene Description', body.description, 'bg-blue-500/20');
+
+                    if (body.audio) {
+                        playAudioBase64(body.audio);
+                    }
+                }
+            } catch (error) {
+                console.error('Scene description error:', error);
+                speak('Description failed');
+            }
+        }
+
+        // Where Am I
+        function whereAmI() {
+            if (currentLocation) {
+                const message = `Your coordinates are ${currentLocation[0].toFixed(4)}, ${currentLocation[1].toFixed(4)}`;
+                speak(message);
+                addResult('📍 Location', message, 'bg-blue-500/20');
+            } else {
+                speak('Location not available');
+            }
+        }
+
+        // Emergency Alert
+        async function sendEmergency() {
+            if (!confirm('Are you sure you want to send an emergency alert?')) {
+                return;
+            }
+
+            speak('Sending emergency alert');
+            addResult('🚨 Emergency', 'Sending alert to emergency contacts...', 'bg-red-500/30');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'emergency_alert',
+                        location: currentLocation || [37.7749, -122.4194],
+                        type: 'user_triggered',
+                        user_id: 'user123'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    const body = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+                    speak(body.message);
+                    addResult('✅ Alert Sent', body.message, 'bg-green-500/20');
+
+                    if (body.audio) {
+                        playAudioBase64(body.audio);
+                    }
+                }
+            } catch (error) {
+                console.error('Emergency alert error:', error);
+                speak('Emergency alert failed');
+            }
+        }
+
+        // Add result to display
+        function addResult(title, message, bgColor) {
+            const results = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `p-4 ${bgColor} rounded-lg border border-white/10 animate-fade-in`;
+            resultDiv.innerHTML = `
+                <div class="flex justify-between items-start mb-1">
+                    <div class="font-semibold">${title}</div>
+                    <div class="text-xs text-white/50">${new Date().toLocaleTimeString()}</div>
+                </div>
+                <div class="text-sm">${message}</div>
+            `;
+            
+            results.insertBefore(resultDiv, results.firstChild);
+            
+            // Keep only last 10 results
+            while (results.children.length > 10) {
+                results.removeChild(results.lastChild);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            speak('Welcome to AccessOne. Blind navigation system ready.');
+            console.log('System initialized');
+        });
+    </script>
+</body>
+</html>
