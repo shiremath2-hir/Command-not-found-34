@@ -29,7 +29,7 @@
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/function/awsxinrixhackathon59d511cd-cloudformation-template.json",
         "logicalId": "functionawsxinrixhackathon59d511cd"
       },
-      "lastPushTimeStamp": "2025-10-26T03:33:16.371Z",
+      "lastPushTimeStamp": "2025-10-26T11:08:23.857Z",
       "output": {
         "LambdaExecutionRoleArn": "arn:aws:iam::496268125027:role/awsxinrixhackathonLambdaRolefb269443-dev",
         "Region": "us-east-1",
@@ -55,7 +55,7 @@
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/function/awsxinrixhackathon19e0a6eb-cloudformation-template.json",
         "logicalId": "functionawsxinrixhackathon19e0a6eb"
       },
-      "lastPushTimeStamp": "2025-10-26T03:33:16.373Z",
+      "lastPushTimeStamp": "2025-10-26T11:08:23.860Z",
       "output": {
         "LambdaExecutionRoleArn": "arn:aws:iam::496268125027:role/awsxinrixhackathonLambdaRole61c9860f-dev",
         "Region": "us-east-1",
@@ -81,7 +81,7 @@
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/function/NavigationAI-cloudformation-template.json",
         "logicalId": "functionNavigationAI"
       },
-      "lastPushTimeStamp": "2025-10-26T03:33:16.849Z",
+      "lastPushTimeStamp": "2025-10-26T11:08:23.861Z",
       "output": {
         "LambdaExecutionRoleArn": "arn:aws:iam::496268125027:role/awsxinrixhackathonLambdaRole190e2b62-dev",
         "Region": "us-east-1",
@@ -110,7 +110,7 @@
         "s3TemplateURL": "https://s3.amazonaws.com/amplify-awsxinrixhackathon-dev-c1e4d-deployment/amplify-cfn-templates/api/api5414620e-cloudformation-template.json",
         "logicalId": "apiapi5414620e"
       },
-      "lastPushTimeStamp": "2025-10-26T03:33:16.375Z",
+      "lastPushTimeStamp": "2025-10-26T11:08:23.864Z",
       "output": {
         "ApiName": "api5414620e",
         "RootUrl": "https://c3hcqo9h7b.execute-api.us-east-1.amazonaws.com/dev",

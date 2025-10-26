@@ -1,11 +1,8 @@
 {
-<<<<<<< HEAD
   "providers": [
     "awscloudformation"
   ],
-=======
   "whyContinueWithGen1": "I am a current Gen 1 user",
->>>>>>> 0dadb086559e5257fca4fa9cccc81401d4d439b7
   "projectName": "Awsxinrixhackathon",
   "version": "3.1",
   "frontend": "javascript",
@@ -17,12 +14,5 @@
       "BuildCommand": "npm run-script build",
       "StartCommand": "npm run-script start"
     }
-<<<<<<< HEAD
   }
-=======
-  },
-  "providers": [
-    "awscloudformation"
-  ]
->>>>>>> 0dadb086559e5257fca4fa9cccc81401d4d439b7
 }
