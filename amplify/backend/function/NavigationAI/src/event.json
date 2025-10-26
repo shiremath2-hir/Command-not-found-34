@@ -1,0 +1,10 @@
+
+
+{
+  "action": "get_route",
+  "start_name": "Seattle, WA",
+  "end_name": "Redmond, WA",
+  "graphhopper_key": "f0c161ef-891e-4428-9b98-c0da7de3fe25",
+  "mode": "foot"
+}
+
