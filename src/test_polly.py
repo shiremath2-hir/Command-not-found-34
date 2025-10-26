@@ -1,3 +1,8 @@
+"""
+Test script for Amazon Polly text-to-speech
+Quick test to make sure voice features work
+Run: python3 src/test_polly.py
+"""
 import boto3
 import os
 

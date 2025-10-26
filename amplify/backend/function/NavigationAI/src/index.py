@@ -1,3 +1,9 @@
+"""
+Navigation AI Lambda
+Provides turn-by-turn navigation with traffic updates
+Integrates AWS Location Service with INRIX traffic data
+Also handles text-to-speech for voice directions
+"""
 import json
 import boto3
 import requests

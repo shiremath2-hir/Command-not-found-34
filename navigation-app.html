@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Navigation Assistant - Team 34</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      background: #1a1a2e;
+      padding: 15px;
+      text-align: center;
+      border-bottom: 3px solid #0f3460;
+    }
+
+    .header h1 {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+
+    .status {
+      background: #0f3460;
+      padding: 20px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      text-align: center;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .status.speaking {
+      background: #16a085;
+      animation: pulse 1s infinite;
+    }
+
+    .status.error {
+      background: #e74c3c;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .camera-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #capturedImage {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .controls {
+      background: #1a1a2e;
+      padding: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 20px 10px;
+      font-size: 1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: transform 0.1s;
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-photo {
+      background: #2980b9;
+    }
+
+    .btn-voice {
+      background: #27ae60;
+    }
+
+    .btn-voice.listening {
+      background: #e74c3c;
+      animation: pulse 1s infinite;
+    }
+
+    .btn-continuous {
+      background: #8e44ad;
+    }
+
+    .btn-continuous.active {
+      background: #16a085;
+      animation: pulse 1s infinite;
+    }
+
+    .btn-emergency {
+      background: #c0392b;
+    }
+
+    .icon {
+      font-size: 2rem;
+    }
+
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.8);
+      padding: 30px;
+      border-radius: 15px;
+      display: none;
+      z-index: 1000;
+    }
+
+    .loading.show {
+      display: block;
+    }
+
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>👁️ Navigation Assistant</h1>
+    <p>Team 34 - AWS x INRIX Hackathon</p>
+  </div>
+
+  <div class="status" id="status">
+    Welcome! Tap Take Photo to start
+  </div>
+
+  <div class="camera-container">
+    <video id="video" autoplay playsinline muted style="display:none;"></video>
+    <img id="capturedImage" style="display:none;" alt="Captured"/>
+    <div style="font-size: 3rem; color: #555;">📷</div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-photo" id="photoBtn">
+      <span class="icon">📸</span>
+      <span>Take Photo</span>
+    </button>
+    <button class="btn btn-voice" id="voiceBtn">
+      <span class="icon">🎤</span>
+      <span id="voiceText">Voice</span>
+    </button>
+    <button class="btn btn-continuous" id="continuousBtn">
+      <span class="icon">🔄</span>
+      <span id="continuousText">Walk Mode</span>
+    </button>
+    <button class="btn btn-emergency" id="emergencyBtn">
+      <span class="icon">🚨</span>
+      <span>Emergency</span>
+    </button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>Processing...</div>
+  </div>
+
+  <script>
+    const API_URL = 'https://c3hcqo9h7b.execute-api.us-east-1.amazonaws.com/dev';
+
+    const video = document.getElementById('video');
+    const capturedImage = document.getElementById('capturedImage');
+    const status = document.getElementById('status');
+    const photoBtn = document.getElementById('photoBtn');
+    const voiceBtn = document.getElementById('voiceBtn');
+    const voiceText = document.getElementById('voiceText');
+    const continuousBtn = document.getElementById('continuousBtn');
+    const continuousText = document.getElementById('continuousText');
+    const emergencyBtn = document.getElementById('emergencyBtn');
+    const loading = document.getElementById('loading');
+
+    let isListening = false;
+    let isContinuous = false;
+    let continuousInterval = null;
+    let lastDescription = '';
+    let recognition = null;
+
+    // Hazard keywords for urgent alerts
+    const HAZARDS = ['car', 'vehicle', 'truck', 'bus', 'motorcycle', 'bicycle', 'stairs', 'staircase', 'step', 'cliff', 'edge', 'hole', 'traffic'];
+    const DIRECTION_THRESHOLD = 0.33; // Left/center/right detection
+
+    // SPEECH SYNTHESIS
+    function speak(text, urgent = false) {
+      status.classList.add('speaking');
+      status.textContent = text;
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = urgent ? 1.1 : 0.9;
+      utterance.volume = urgent ? 1.0 : 0.9;
+      utterance.onend = () => {
+        status.classList.remove('speaking');
+      };
+
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utterance);
+    }
+
+    // ENHANCED ANALYSIS - Detects hazards, direction, and text
+    function analyzeResults(description) {
+      const lower = description.toLowerCase();
+      let announcement = '';
+      let isUrgent = false;
+
+      // Check for hazards
+      for (const hazard of HAZARDS) {
+        if (lower.includes(hazard)) {
+          announcement = `⚠️ CAUTION! ${hazard.toUpperCase()} detected. `;
+          isUrgent = true;
+          break;
+        }
+      }
+
+      // Smart filtering - only announce if different from last time
+      if (description !== lastDescription) {
+        announcement += description;
+        lastDescription = description;
+        return { text: announcement, urgent: isUrgent };
+      } else if (isUrgent) {
+        // Always announce hazards even if repeated
+        return { text: announcement, urgent: true };
+      }
+
+      return null; // Skip repetitive announcements
+    }
+
+    // TAKE PHOTO
+    photoBtn.addEventListener('click', async () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        loading.classList.add('show');
+        status.textContent = 'Analyzing...';
+
+        try {
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const base64Image = event.target.result.split(',')[1];
+            capturedImage.src = event.target.result;
+            capturedImage.style.display = 'block';
+
+            const response = await fetch(API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: base64Image })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              const description = data.description || 'No objects detected';
+
+              // Use enhanced analysis
+              const result = analyzeResults(description);
+              if (result) {
+                speak(result.text, result.urgent);
+              } else if (!isContinuous) {
+                // Only say "no change" when not in continuous mode
+                speak('No significant changes detected');
+              }
+            } else {
+              status.classList.add('error');
+              status.textContent = 'Error analyzing image';
+              speak('Error analyzing image');
+              setTimeout(() => status.classList.remove('error'), 3000);
+            }
+          };
+
+          reader.readAsDataURL(file);
+        } catch (err) {
+          console.error(err);
+          status.classList.add('error');
+          status.textContent = 'Connection error';
+          speak('Connection error');
+          setTimeout(() => status.classList.remove('error'), 3000);
+        } finally {
+          loading.classList.remove('show');
+        }
+      };
+
+      input.click();
+    });
+
+    // CONTINUOUS MONITORING MODE
+    continuousBtn.addEventListener('click', () => {
+      if (isContinuous) {
+        // Stop continuous mode
+        isContinuous = false;
+        clearInterval(continuousInterval);
+        continuousInterval = null;
+        continuousBtn.classList.remove('active');
+        continuousText.textContent = 'Walk Mode';
+        speak('Walk mode stopped');
+      } else {
+        // Start continuous mode
+        isContinuous = true;
+        continuousBtn.classList.add('active');
+        continuousText.textContent = 'Stop';
+        speak('Walk mode started. I will guide you continuously.');
+
+        // Take photo every 4 seconds
+        continuousInterval = setInterval(() => {
+          if (isContinuous) {
+            photoBtn.click();
+          }
+        }, 4000);
+
+        // Take first photo immediately
+        setTimeout(() => photoBtn.click(), 1000);
+      }
+    });
+
+    // VOICE RECOGNITION
+    function setupVoiceRecognition() {
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+          isListening = true;
+          voiceBtn.classList.add('listening');
+          voiceText.textContent = 'Listening...';
+          speak('Listening');
+        };
+
+        recognition.onresult = (event) => {
+          const transcript = event.results[0][0].transcript;
+          processVoiceCommand(transcript);
+        };
+
+        recognition.onend = () => {
+          isListening = false;
+          voiceBtn.classList.remove('listening');
+          voiceText.textContent = 'Voice';
+        };
+
+        recognition.onerror = () => {
+          speak('Could not understand');
+          voiceBtn.classList.remove('listening');
+          voiceText.textContent = 'Voice';
+        };
+      } else {
+        voiceBtn.disabled = true;
+        voiceText.textContent = 'Not supported';
+      }
+    }
+
+    voiceBtn.addEventListener('click', () => {
+      if (!recognition) return;
+      if (isListening) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    });
+
+    function processVoiceCommand(command) {
+      const cmd = command.toLowerCase();
+      speak(`You said: ${command}`);
+
+      if (cmd.includes('photo') || cmd.includes('what do you see') || cmd.includes('describe')) {
+        setTimeout(() => photoBtn.click(), 1000);
+      } else if (cmd.includes('walk') || cmd.includes('continuous') || cmd.includes('start guide')) {
+        setTimeout(() => continuousBtn.click(), 1000);
+      } else if (cmd.includes('stop')) {
+        if (isContinuous) {
+          setTimeout(() => continuousBtn.click(), 1000);
+        }
+      } else if (cmd.includes('emergency') || cmd.includes('help')) {
+        emergencyBtn.click();
+      } else {
+        speak('Say take photo, walk mode, or emergency for help');
+      }
+    }
+
+    // EMERGENCY
+    emergencyBtn.addEventListener('click', () => {
+      speak('Emergency alert activated. Sending your location.');
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const { latitude, longitude } = position.coords;
+            speak(`Emergency alert sent. Location: ${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+            console.log('Emergency:', latitude, longitude);
+          },
+          () => {
+            speak('Emergency alert sent');
+          }
+        );
+      } else {
+        speak('Emergency alert activated');
+      }
+    });
+
+    // INITIALIZE
+    window.addEventListener('load', () => {
+      setupVoiceRecognition();
+      setTimeout(() => {
+        speak('Navigation assistant ready. Tap take photo to analyze, walk mode for continuous guidance, or use voice commands.');
+      }, 1500);
+    });
+  </script>
+</body>
+</html>
