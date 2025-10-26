@@ -1,0 +1,12 @@
+# AWS credentials or secrets
+*.pem
+*.key
+*.crt
+*.env
+.env.local
+.env.*.local
+
+# Build artifacts
+dist/
+build/
+coverage/
