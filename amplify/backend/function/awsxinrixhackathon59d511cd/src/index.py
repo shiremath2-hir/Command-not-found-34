@@ -151,10 +151,14 @@ def handler(event, context):
                 should_speak = True
         
         # Build response data
+        # Convert bounding boxes to obstacles format for frontend
+        obstacles = convert_boxes_to_obstacles(boxes)
+
         data = {
             "aiDescription": ai_text,
             "alert": alert,
             "boundingBoxes": boxes,
+            "obstacles": obstacles,
             "shouldSpeak": should_speak,
             "sceneChanged": scene_changed,
             "imageWidth": labels.get('ImageProperties', {}).get('Width', 0),
@@ -469,31 +473,78 @@ def extract_boxes(res):
     return out
 
 
+def convert_boxes_to_obstacles(boxes):
+    """Convert bounding boxes to obstacle format with distance and position"""
+    obstacles = []
+
+    for box in boxes:
+        label = box.get("label", "").lower()
+
+        # Only include relevant obstacles
+        if label not in ["person", "people", "human", "car", "bicycle", "pole",
+                        "post", "tree", "bench", "dog", "cat", "vehicle"]:
+            continue
+
+        bbox = box.get("box", {})
+
+        # Calculate position (0=left, 0.5=center, 1=right)
+        center_x = bbox.get("Left", 0) + (bbox.get("Width", 0) / 2.0)
+
+        # Estimate distance based on box height (rough approximation)
+        # Taller box = closer object
+        height = bbox.get("Height", 0)
+        if height > 0.5:
+            distance = 1.0  # Very close
+        elif height > 0.35:
+            distance = 2.0
+        elif height > 0.25:
+            distance = 3.0
+        elif height > 0.15:
+            distance = 5.0
+        else:
+            distance = 10.0  # Far away
+
+        # Normalize label
+        obstacle_type = "person" if label in ["person", "people", "human"] else label
+
+        obstacles.append({
+            "type": obstacle_type,
+            "distance": distance,
+            "position": round(center_x, 2),
+            "confidence": box.get("confidence", 0)
+        })
+
+    # Sort by distance (closest first)
+    obstacles.sort(key=lambda x: x["distance"])
+
+    return obstacles
+
+
 def detect_pedestrian_alert(boxes):
     """Detect if pedestrian is in path"""
     try:
-        people = [b for b in boxes 
+        people = [b for b in boxes
                  if b["label"].lower() in ("person", "people", "human")]
         if not people:
             return {"level": "none", "message": "", "count": 0}
-        
+
         def score(p):
             bx = p["box"]
             center_x = bx["left"] + bx["width"] / 2.0
             centered = 1.0 - abs(center_x - 0.5) * 2.0
             size = bx["height"]
             return (centered * 0.6) + (min(size, 1.0) * 0.4)
-        
+
         people_sorted = sorted(people, key=score, reverse=True)
         nearest = people_sorted[0]
         bx = nearest["box"]
         center_x = bx["left"] + bx["width"] / 2.0
         size_h = bx["height"]
-        
+
         is_centered = (0.35 <= center_x <= 0.65)
         very_close = size_h >= 0.35
         near = size_h >= 0.25
-        
+
         if is_centered and (very_close or near):
             proximity = "very close" if very_close else "near"
             msg = f"Warning: pedestrian {proximity} ahead."
@@ -503,10 +554,10 @@ def detect_pedestrian_alert(boxes):
                 "count": len(people),
                 "nearestBox": nearest
             }
-            
+
     except Exception as e:
         print(f"Error detecting pedestrian: {e}")
-    
+
     return {"level": "none", "message": "", "count": 0}
 
 

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@types/styled-components": "^5.1.35",
+    "lucide-react": "^0.548.0",
     "react": "^19.1.1",
     "react-camera-pro": "^1.4.0",
     "react-dom": "^19.1.1",

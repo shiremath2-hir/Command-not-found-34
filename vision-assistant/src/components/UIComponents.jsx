@@ -157,9 +157,64 @@ export const NavigationMode = ({ isNavigating, destination, setDestination, curr
   );
 };
 
-export const VisionMode = ({ showCamera, currentLocation, onDescribeScene, onToggleCamera, onSpeakLocation, speak, processing }) => {
+export const VideoDemoPlayer = ({ videoUrl, demoVideoRef, demoCanvasRef, onVideoPlay, onVideoEnd, onStopVideo, demoVideoAnalyzing }) => {
+  if (!videoUrl) return null;
+
+  return (
+    <div className="bg-gray-900 p-4 rounded-xl shadow-2xl">
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-xl font-bold text-white">🎥 Demo Video - Obstacle Detection</h3>
+        <button onClick={onStopVideo} className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition-all">
+          ✕ Close
+        </button>
+      </div>
+      <div className="relative w-full bg-black rounded-lg overflow-hidden">
+        <video
+          ref={demoVideoRef}
+          src={videoUrl}
+          controls
+          autoPlay
+          onPlay={onVideoPlay}
+          onEnded={onVideoEnd}
+          className="w-full h-auto"
+          style={{ display: 'block' }}
+        />
+        <canvas
+          ref={demoCanvasRef}
+          className="absolute top-0 left-0 w-full h-full pointer-events-none"
+          style={{ objectFit: 'contain' }}
+        />
+      </div>
+      {demoVideoAnalyzing && (
+        <div className="mt-3 bg-green-500 text-white px-4 py-2 rounded-lg text-center font-semibold animate-pulse">
+          <Loader className="inline w-5 h-5 mr-2 animate-spin" />
+          Analyzing frames and detecting obstacles...
+        </div>
+      )}
+      <div className="mt-3 bg-yellow-900 text-yellow-100 px-4 py-3 rounded-lg text-sm">
+        <p className="font-semibold">🎯 Detection Info:</p>
+        <p>• Red boxes show detected obstacles</p>
+        <p>• Labels show object type and distance</p>
+        <p>• Voice warnings give directional guidance</p>
+      </div>
+    </div>
+  );
+};
+
+export const VisionMode = ({ showCamera, currentLocation, onDescribeScene, onToggleCamera, onSpeakLocation, speak, processing, onFileUpload, fileInputRef, onVideoDemoUpload, videoFileInputRef, demoVideoAnalyzing, uploadedVideoUrl, demoVideoRef, demoCanvasRef, onVideoPlay, onVideoEnd, onStopVideo }) => {
   return (
     <div className="space-y-4">
+      {/* Video Demo Player - Shows when video is uploaded */}
+      <VideoDemoPlayer
+        videoUrl={uploadedVideoUrl}
+        demoVideoRef={demoVideoRef}
+        demoCanvasRef={demoCanvasRef}
+        onVideoPlay={onVideoPlay}
+        onVideoEnd={onVideoEnd}
+        onStopVideo={onStopVideo}
+        demoVideoAnalyzing={demoVideoAnalyzing}
+      />
+
       <div className="bg-gray-50 p-6 rounded-xl text-center">
         <button onClick={onDescribeScene} disabled={processing} className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all mb-4 disabled:opacity-50 disabled:cursor-not-allowed">
           {processing ? (
@@ -173,6 +228,59 @@ export const VisionMode = ({ showCamera, currentLocation, onDescribeScene, onTog
         </button>
         <p className="text-sm text-gray-600 mt-4">Point camera ahead and tap Describe Scene</p>
       </div>
+
+      {/* Video Demo Upload Section - PROMINENT */}
+      <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-xl border-4 border-orange-400 shadow-lg">
+        <h3 className="text-xl font-bold text-orange-800 mb-2 text-center flex items-center justify-center gap-2">
+          🎥 Demo: Upload Video for Obstacle Detection
+        </h3>
+        <p className="text-sm text-gray-700 mb-4 text-center">
+          Upload a video to see how Prism detects obstacles and gives you directional warnings like "move left" or "move right"
+        </p>
+        <input
+          ref={videoFileInputRef}
+          type="file"
+          accept="video/*,image/*"
+          onChange={onVideoDemoUpload}
+          className="hidden"
+          id="video-demo-upload"
+        />
+        <label
+          htmlFor="video-demo-upload"
+          className={`block w-full bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-5 rounded-xl font-bold text-xl hover:shadow-2xl transition-all cursor-pointer text-center ${demoVideoAnalyzing ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+        >
+          {demoVideoAnalyzing ? (
+            <><Loader className="inline w-7 h-7 mr-2 animate-spin" />Analyzing Demo Video...</>
+          ) : (
+            <><Video className="inline w-7 h-7 mr-2" />Upload Video Demo</>
+          )}
+        </label>
+        <p className="text-xs text-orange-700 mt-3 text-center font-semibold">
+          ⚠️ This will analyze your video and speak out: "person on left, move right" • "pole ahead, continue straight"
+        </p>
+      </div>
+
+      {/* File Upload Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-xl border-2 border-blue-200">
+        <h3 className="text-lg font-bold text-gray-800 mb-3 text-center">📤 Upload Image for Scene Description</h3>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={onFileUpload}
+          className="hidden"
+          id="file-upload"
+        />
+        <label
+          htmlFor="file-upload"
+          className="block w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-6 py-4 rounded-xl font-semibold text-lg hover:shadow-lg transition-all cursor-pointer text-center"
+        >
+          <Camera className="inline w-6 h-6 mr-2" />
+          Choose Image
+        </label>
+        <p className="text-sm text-gray-600 mt-3 text-center">Upload a photo to get scene description with obstacle warnings</p>
+      </div>
+
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => speak('Camera is ' + (showCamera ? 'active' : 'inactive'))} className="bg-indigo-100 text-indigo-700 px-4 py-3 rounded-lg font-semibold hover:bg-indigo-200 transition-all">🔊 Status</button>
         <button onClick={onSpeakLocation} disabled={!currentLocation} className="bg-green-100 text-green-700 px-4 py-3 rounded-lg font-semibold hover:bg-green-200 transition-all disabled:opacity-50">📍 Location</button>
