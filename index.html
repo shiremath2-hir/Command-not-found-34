@@ -1,391 +1,651 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Vision Assistant — Warnings & On-Demand Narration</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
-    .container{max-width:1400px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
-    .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:28px;text-align:center}
-    .header h1{font-size:2rem;margin-bottom:6px}
-    .content{padding:24px}
-    .mode-selector{text-align:center;margin-bottom:18px}
-    .mode-btn{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:12px 28px;border:none;border-radius:999px;font-size:1rem;cursor:pointer;margin:0 8px;transition:transform .2s}
-    .mode-btn:hover{transform:translateY(-1px)}
-    .mode-btn.active{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);box-shadow:0 5px 20px rgba(79,172,254,.4)}
-    .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;align-items:center}
-    .controls{text-align:center;margin:12px 0}
-    .btn{background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:#fff;padding:12px 24px;border:none;border-radius:999px;font-size:1rem;cursor:pointer}
-    .btn.secondary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%)}
-    .btn.danger{background:linear-gradient(135deg,#ff6b6b 0%,#ee5a6f 100%)}
-    .stage{position:relative;max-width:900px;margin:12px auto}
-    canvas, video, img{width:100%;border:3px solid #667eea;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
-    .desc{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:14px;border-radius:12px;margin:12px auto;max-width:900px;font-size:1.05rem;line-height:1.5;box-shadow:0 10px 30px rgba(102,126,234,.3);display:none;text-align:center}
-    .desc.speaking{animation:pulse 1.5s ease-in-out infinite}
-    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.02)}}
-    .desc[data-processing="1"]::after{content:" • processing…";font-size:.95em;opacity:.85}
-    .error{background:#ff4757;color:#fff;padding:12px;border-radius:10px;margin:10px auto;max-width:900px;display:none}
-    .hint{opacity:.85;font-size:.9rem}
-    label > input{margin-right:6px}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Vision + Navigation Assistant</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  overflow: hidden;
+}
+
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 28px;
+  text-align: center;
+}
+
+.header h1 {
+  font-size: 2rem;
+  margin-bottom: 8px;
+}
+
+.content {
+  padding: 24px;
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+.btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 999px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform .2s;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.btn.danger {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+}
+
+.input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.media-container {
+  position: relative;
+  max-width: 800px;
+  margin: 0 auto 20px;
+}
+
+video, canvas {
+  width: 100%;
+  border: 3px solid #667eea;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.2);
+  display: block;
+}
+
+canvas {
+  display: none;
+}
+
+#desc {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px;
+  border-radius: 12px;
+  margin: 16px auto;
+  max-width: 800px;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  text-align: center;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#desc.speaking {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.error {
+  background: #ff4757;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  margin: 12px auto;
+  max-width: 800px;
+  display: none;
+  text-align: center;
+}
+
+.nav-panel {
+  background: #f8f9ff;
+  border: 2px solid #e6e8ff;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.nav-panel h3 {
+  color: #667eea;
+  margin-bottom: 12px;
+}
+
+.map-container {
+  margin-top: 20px;
+}
+
+.map-img {
+  width: 100%;
+  max-width: 600px;
+  border-radius: 12px;
+  border: 2px solid #667eea;
+  display: block;
+  margin: 0 auto;
+}
+
+.directions {
+  background: white;
+  border: 2px solid #e6e8ff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.directions h4 {
+  color: #667eea;
+  margin-bottom: 8px;
+}
+
+.step {
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.step:last-child {
+  border-bottom: none;
+}
+
+.nearby {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.nearby-item {
+  background: white;
+  border: 1px solid #e6e8ff;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.nearby-item h5 {
+  color: #667eea;
+  margin-bottom: 6px;
+}
+
+.status {
+  text-align: center;
+  color: #666;
+  font-size: 0.95rem;
+  margin-top: 12px;
+}
+
+.hidden {
+  display: none !important;
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>👁️ Vision Assistant</h1>
-      <p class="hint">Silent by default. Warn on pedestrians ahead. “Tell me now” for a full description.</p>
-    </div>
-
-    <div class="content">
-      <div class="mode-selector">
-        <button class="mode-btn active" data-mode="photo">📸 Photo</button>
-        <button class="mode-btn" data-mode="video">📤 Video</button>
-      </div>
-
-      <!-- PHOTO MODE -->
-      <section id="photoSection">
-        <div class="controls row">
-          <button id="openCamBtn" class="btn">🎥 Open Camera</button>
-          <button id="captureBtn" class="btn secondary" style="display:none;">📷 Capture</button>
-          <button id="closeCamBtn" class="btn danger" style="display:none;">⏹️ Close Camera</button>
-
-          <!-- Upload Image via label -->
-          <label for="imageInput" class="btn secondary">📁 Upload Image</label>
-          <input id="imageInput" type="file" accept="image/*" capture="environment" style="display:none;" />
-
-          <!-- “Tell me now” forces narration -->
-          <button id="tellPhotoBtn" class="btn" style="display:none;">🗣️ Tell me now</button>
-        </div>
-
-        <div class="stage">
-          <video id="photoPreview" autoplay playsinline style="display:none;"></video>
-          <canvas id="photoCanvas" style="display:none;"></canvas>
-        </div>
-
-        <div id="photoDesc" class="desc" style="display:none;">
-          <span id="photoDescText">Ready.</span>
-        </div>
-        <div id="photoErr" class="error"></div>
-      </section>
-
-      <!-- VIDEO MODE -->
-      <section id="videoSection" style="display:none;">
-        <div class="controls row">
-          <label for="videoInput" class="btn secondary">📁 Upload Video</label>
-          <input id="videoInput" type="file" accept="video/*" style="display:none;" />
-          <button id="analyzeVideoBtn" class="btn" style="display:none;">▶️ Start</button>
-          <button id="stopAnalyzeBtn" class="btn danger" style="display:none;">⏹️ Stop</button>
-          <button id="tellVideoBtn" class="btn secondary" style="display:none;">🗣️ Tell me now</button>
-          <label class="hint"><input id="detailedMode" type="checkbox"> Detailed AI (slower)</label>
-          <label class="hint"><input id="autoSpeak" type="checkbox" checked> Auto-speak</label>
-        </div>
-
-        <div class="stage">
-          <video id="videoPreview" controls style="display:none;"></video>
-          <canvas id="videoCanvas" style="display:none;"></canvas>
-        </div>
-
-        <div id="videoDesc" class="desc" style="display:none;">
-          <span id="videoDescText">Ready.</span>
-        </div>
-        <div id="videoErr" class="error"></div>
-      </section>
-    </div>
+<div class="container">
+  <div class="header">
+    <h1>🧭 Vision + Navigation Assistant</h1>
+    <p>Real-time navigation with AI vision assistance</p>
   </div>
 
-  <script>
-    // ===== CONFIG =====
-    const API_ENDPOINT = 'https://c3hcqo9h7b.execute-api.us-east-1.amazonaws.com/dev/items'; // <-- your API
+  <div class="content">
+    <!-- Destination Input -->
+    <div class="input-group">
+      <input id="dest" type="text" placeholder="Enter destination (e.g., Starbucks San Jose, CA)">
+      <button id="useLoc" class="btn success">📍 Use My Location</button>
+    </div>
 
-    // ===== SPEECH =====
-    let isSpeaking = false;
-    let autoSpeak = true;
-    document.getElementById('autoSpeak').addEventListener('change', e => autoSpeak = e.target.checked);
-    function speak(text, node){
-      if(!text) return;
-      isSpeaking = true;
-      node.classList.add('speaking');
-      const u = new SpeechSynthesisUtterance(text);
-      u.rate = 1.0; u.pitch = 1.0;
-      u.onend = ()=>{ isSpeaking = false; node.classList.remove('speaking'); };
-      speechSynthesis.speak(u);
-    }
+    <!-- Controls -->
+    <div class="controls">
+      <button id="startNav" class="btn">🧭 Start Navigation</button>
+      <button id="stopNav" class="btn danger hidden">⏹️ Stop Navigation</button>
+      <button id="tellMe" class="btn">🗣️ Tell Me Now</button>
+    </div>
 
-    // ===== UTILS =====
-    function setProcessing(node, on){ if(on) node.setAttribute('data-processing','1'); else node.removeAttribute('data-processing'); }
-    function show(el){ el.style.display = ''; }
-    function hide(el){ el.style.display = 'none'; }
-    function showError(el, msg){ el.textContent = msg; show(el); console.error(msg); }
-    function clearError(el){ el.textContent=''; hide(el); }
+    <!-- Status -->
+    <div class="status" id="status">Click "Use My Location" to enable GPS, then start navigation</div>
 
-    // ===== MODE TOGGLE =====
-    const photoSection = document.getElementById('photoSection');
-    const videoSection = document.getElementById('videoSection');
-    document.querySelectorAll('.mode-btn').forEach(btn=>{
-      btn.addEventListener('click', function(){
-        document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
-        this.classList.add('active');
-        const m = this.dataset.mode;
-        if(m==='photo'){ show(photoSection); hide(videoSection); stopAnalyzeVideo(); stopCamera(); }
-        else{ hide(photoSection); show(videoSection); stopCamera(); }
-      });
-    });
+    <!-- Video/Canvas -->
+    <div class="media-container">
+      <video id="vid" autoplay playsinline></video>
+      <canvas id="can"></canvas>
+    </div>
 
-    // =========================
-    // PHOTO MODE
-    // =========================
-    const openCamBtn = document.getElementById('openCamBtn');
-    const captureBtn = document.getElementById('captureBtn');
-    const closeCamBtn = document.getElementById('closeCamBtn');
-    const imageInput = document.getElementById('imageInput');
-    const tellPhotoBtn = document.getElementById('tellPhotoBtn');
+    <!-- Description -->
+    <div id="desc">Ready to assist you</div>
+    <div id="error" class="error"></div>
 
-    const photoPreview = document.getElementById('photoPreview');
-    const photoCanvas = document.getElementById('photoCanvas');
-    const photoDesc = document.getElementById('photoDesc');
-    const photoDescText = document.getElementById('photoDescText');
-    const photoErr = document.getElementById('photoErr');
-    let photoStream = null;
-    let lastPhotoDesc = '';
+    <!-- Navigation Panel -->
+    <div id="navPanel" class="nav-panel hidden">
+      <h3>📍 Current Location</h3>
+      <div id="currentLocation"></div>
+      
+      <!-- Map -->
+      <div class="map-container" id="mapContainer" class="hidden">
+        <img id="mapImg" class="map-img" alt="Navigation map">
+      </div>
 
-    openCamBtn.addEventListener('click', async ()=>{
-      try{
-        photoStream = await navigator.mediaDevices.getUserMedia({ video:{ width:{ideal:1280}, height:{ideal:720} } });
-        photoPreview.srcObject = photoStream;
-        await photoPreview.play();
-        show(photoPreview); show(captureBtn); show(closeCamBtn);
-        hide(photoCanvas); hide(tellPhotoBtn);
-        show(photoDesc); photoDescText.textContent = 'Camera ready. Capture when ready.';
-        clearError(photoErr);
-      }catch(e){ showError(photoErr, 'Camera access denied: '+e.message); }
-    });
+      <!-- Directions -->
+      <div id="directionsContainer" class="directions hidden">
+        <h4>🚶 Walking Directions</h4>
+        <div id="directionsSummary"></div>
+        <div id="directionsSteps"></div>
+      </div>
 
-    captureBtn.addEventListener('click', ()=>{
-      if(!photoPreview.videoWidth) return;
-      photoCanvas.width = photoPreview.videoWidth;
-      photoCanvas.height = photoPreview.videoHeight;
-      photoCanvas.getContext('2d').drawImage(photoPreview,0,0,photoCanvas.width,photoCanvas.height);
-      show(photoCanvas); show(tellPhotoBtn);
-      show(photoDesc); photoDescText.textContent = 'Captured. Tap “Tell me now” for narration or leave silent.';
-      stopCamera(true);
-    });
+      <!-- Nearby Places -->
+      <div id="nearbyContainer" class="hidden">
+        <h4 style="color: #667eea; margin-top: 20px;">📍 Nearby</h4>
+        <div id="nearbyList" class="nearby"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
-    closeCamBtn.addEventListener('click', ()=> stopCamera());
+<script>
+// Configuration
+const API = 'https://c3hcqo9h7b.execute-api.us-east-1.amazonaws.com/dev/items';
 
-    function stopCamera(keep=false){
-      try{ if(photoStream){ photoStream.getTracks().forEach(t=>t.stop()); photoStream=null; } }catch{}
-      if(!keep) hide(photoPreview);
-      hide(captureBtn); hide(closeCamBtn);
-    }
+// State
+let lat = null;
+let lng = null;
+let stream = null;
+let isNavigating = false;
+let navigationInterval = null;
 
-    imageInput.addEventListener('change', e=>{
-      const f = e.target.files?.[0]; if(!f) return;
-      const r = new FileReader();
-      r.onload = ev=>{
-        const img = new Image();
-        img.onload = ()=>{
-          photoCanvas.width = img.width; photoCanvas.height = img.height;
-          photoCanvas.getContext('2d').drawImage(img,0,0);
-          show(photoCanvas); show(tellPhotoBtn);
-          show(photoDesc); photoDescText.textContent = 'Image ready. Tap “Tell me now” for narration.';
-          clearError(photoErr);
-        };
-        img.src = ev.target.result;
-      };
-      r.readAsDataURL(f);
-    });
+// DOM Elements
+const vid = document.getElementById('vid');
+const can = document.getElementById('can');
+const ctx = can.getContext('2d');
+const desc = document.getElementById('desc');
+const error = document.getElementById('error');
+const status = document.getElementById('status');
+const destInput = document.getElementById('dest');
+const useLocBtn = document.getElementById('useLoc');
+const startNavBtn = document.getElementById('startNav');
+const stopNavBtn = document.getElementById('stopNav');
+const tellMeBtn = document.getElementById('tellMe');
+const navPanel = document.getElementById('navPanel');
 
-    tellPhotoBtn.addEventListener('click', async ()=>{
-      if(photoCanvas.width === 0) return;
-      const b64 = photoCanvas.toDataURL('image/jpeg', 0.9);
-      await sendToAPI({
-        image: b64,
-        continuous: false,
-        tell: true,          // force narration on demand
-        warnOnly: true
-      }, photoDesc, photoDescText, photoErr, (boxes)=>drawBoxesOnCanvas(photoCanvas, boxes), (text)=>{ lastPhotoDesc = text; });
-    });
+// Speech synthesis
+let isSpeaking = false;
+function speak(text) {
+  if (!text || isSpeaking) return;
+  isSpeaking = true;
+  desc.classList.add('speaking');
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+  utterance.onend = () => {
+    isSpeaking = false;
+    desc.classList.remove('speaking');
+  };
+  speechSynthesis.speak(utterance);
+}
 
-    function drawBoxesOnCanvas(canvas, boxes){
-      const ctx = canvas.getContext('2d');
-      // (canvas already contains the photo frame)
-      (boxes||[]).forEach((b,i)=>{
-        const color = `hsl(${(i*67)%360},70%,50%)`;
-        const W = canvas.width, H = canvas.height;
-        const x = b.box.left*W, y = b.box.top*H, w=b.box.width*W, h=b.box.height*H;
-        ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.strokeRect(x,y,w,h);
-        const label = `${b.label} ${Math.round(b.confidence)}%`;
-        const tw = ctx.measureText(label).width + 10;
-        ctx.fillStyle = color; ctx.fillRect(x, Math.max(0,y-22), tw,22);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Arial'; ctx.fillText(label, x+5, Math.max(16,y-6));
-      });
-    }
+// Error handling
+function showError(msg) {
+  error.textContent = msg;
+  error.style.display = 'block';
+  console.error(msg);
+  setTimeout(() => { error.style.display = 'none'; }, 5000);
+}
 
-    // =========================
-    // VIDEO MODE (upload + passive warnings + on-demand tell)
-    // =========================
-    const videoInput = document.getElementById('videoInput');
-    const analyzeVideoBtn = document.getElementById('analyzeVideoBtn');
-    const stopAnalyzeBtn = document.getElementById('stopAnalyzeBtn');
-    const tellVideoBtn = document.getElementById('tellVideoBtn');
-    const detailedMode = document.getElementById('detailedMode');
+function updateStatus(msg) {
+  status.textContent = msg;
+}
 
-    const videoPreview = document.getElementById('videoPreview');
-    const videoCanvas = document.getElementById('videoCanvas');
-    const videoDesc = document.getElementById('videoDesc');
-    const videoDescText = document.getElementById('videoDescText');
-    const videoErr = document.getElementById('videoErr');
+// Get user location
+useLocBtn.addEventListener('click', () => {
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      lat = position.coords.latitude;
+      lng = position.coords.longitude;
+      updateStatus(`Location captured: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      document.getElementById('currentLocation').textContent = 
+        `Latitude: ${lat.toFixed(6)}, Longitude: ${lng.toFixed(6)}`;
+      navPanel.classList.remove('hidden');
+    },
+    (err) => {
+      showError('Location access denied. Please enable GPS in your browser.');
+      console.error(err);
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+});
 
-    let analyzing = false;
-    let lastBoxesHash = null;
-    let lastApiAt = 0;
-    let backoffMs = 0;
-    const MIN_INTERVAL_MS = 1000; // 1 req/sec
-    let lastVideoDesc = '';
+// Start navigation
+startNavBtn.addEventListener('click', async () => {
+  if (!lat || !lng) {
+    showError('Please enable location first');
+    return;
+  }
 
-    videoInput.addEventListener('change', e=>{
-      const f = e.target.files?.[0]; if(!f) return;
-      const url = URL.createObjectURL(f);
-      videoPreview.src = url;
-      show(videoPreview); show(videoCanvas);
-      show(analyzeVideoBtn); hide(stopAnalyzeBtn); show(tellVideoBtn);
-      show(videoDesc); videoDescText.textContent = 'Video loaded. Start for passive warnings; “Tell me now” for narration.';
-      clearError(videoErr);
-    });
-
-    analyzeVideoBtn.addEventListener('click', ()=>{
-      if(!videoPreview.src){ showError(videoErr,'Please upload a video first.'); return; }
-      analyzing = true;
-      hide(analyzeVideoBtn); show(stopAnalyzeBtn);
-      passiveLoop(); // start passive monitoring (warn-only)
-    });
-
-    stopAnalyzeBtn.addEventListener('click', stopAnalyzeVideo);
-
-    function stopAnalyzeVideo(){
-      analyzing = false;
-      hide(stopAnalyzeBtn); show(analyzeVideoBtn);
-      setProcessing(videoDesc,false);
-    }
-
-    tellVideoBtn.addEventListener('click', async ()=>{
-      if(videoCanvas.width === 0){
-        // prime canvas with current frame if not started
-        await ensureVideoReady();
-        videoCanvas.width = videoPreview.videoWidth || 640;
-        videoCanvas.height = videoPreview.videoHeight || 360;
-        videoCanvas.getContext('2d').drawImage(videoPreview,0,0,videoCanvas.width,videoCanvas.height);
+  try {
+    // Request camera access
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { 
+        width: { ideal: 1280 }, 
+        height: { ideal: 720 },
+        facingMode: 'environment'
       }
-      const b64 = videoCanvas.toDataURL('image/jpeg', 0.8);
-      await sendToAPI({
-        image: b64,
-        continuous: false,
-        tell: true,         // on-demand narration
-        warnOnly: true
-      }, videoDesc, videoDescText, videoErr, (boxes)=>redrawFrameAndBoxes(videoCanvas, videoPreview, boxes), (text)=>{ lastVideoDesc = text; });
+    });
+    
+    vid.srcObject = stream;
+    await vid.play();
+    
+    // Wait for video to be ready
+    await new Promise((resolve) => {
+      if (vid.videoWidth > 0) resolve();
+      else vid.onloadedmetadata = resolve;
     });
 
-    async function ensureVideoReady(){
-      if(videoPreview.readyState < videoPreview.HAVE_METADATA){
-        await new Promise(r=> videoPreview.onloadedmetadata = r);
-      }
-      if(videoPreview.readyState < videoPreview.HAVE_ENOUGH_DATA){
-        await new Promise(r=> videoPreview.oncanplay = r);
+    isNavigating = true;
+    startNavBtn.classList.add('hidden');
+    stopNavBtn.classList.remove('hidden');
+    updateStatus('Navigation active - analyzing surroundings...');
+    
+    // Start navigation loop
+    loop();
+    
+  } catch (err) {
+    showError('Camera access denied: ' + err.message);
+    console.error(err);
+  }
+});
+
+// Stop navigation
+stopNavBtn.addEventListener('click', () => {
+  stopNavigation();
+});
+
+function stopNavigation() {
+  isNavigating = false;
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  vid.srcObject = null;
+  
+  if (navigationInterval) {
+    clearTimeout(navigationInterval);
+    navigationInterval = null;
+  }
+  
+  startNavBtn.classList.remove('hidden');
+  stopNavBtn.classList.add('hidden');
+  updateStatus('Navigation stopped');
+  desc.textContent = 'Ready to assist you';
+}
+
+// Tell me now button
+tellMeBtn.addEventListener('click', async () => {
+  if (!stream || !vid.videoWidth) {
+    showError('Please start navigation first');
+    return;
+  }
+  await captureAndAnalyze(true);
+});
+
+// Main navigation loop
+async function loop() {
+  if (!isNavigating || !stream) return;
+
+  try {
+    await captureAndAnalyze(false);
+  } catch (err) {
+    console.error('Loop error:', err);
+  }
+
+  // Continue loop every 3 seconds
+  if (isNavigating) {
+    navigationInterval = setTimeout(loop, 3000);
+  }
+}
+
+// Capture frame and analyze
+async function captureAndAnalyze(tellMode = false) {
+  if (!vid.videoWidth || !vid.videoHeight) {
+    console.warn('Video not ready');
+    return;
+  }
+
+  // Set canvas dimensions
+  can.width = vid.videoWidth;
+  can.height = vid.videoHeight;
+  
+  // Draw current frame
+  ctx.drawImage(vid, 0, 0, can.width, can.height);
+  
+  // Get base64 image with higher quality
+  const b64 = can.toDataURL('image/jpeg', 0.95);
+  
+  // Validate base64
+  if (!b64 || b64.length < 1000) {
+    console.error('Invalid canvas data');
+    return;
+  }
+
+  const destination = destInput.value.trim();
+
+  // Prepare payload
+  const payload = {
+    image: b64,
+    latitude: lat,
+    longitude: lng,
+    destination_address: destination || undefined,
+    getRoute: !!destination,
+    findNearby: true,
+    continuous: !tellMode,
+    tell: tellMode
+  };
+
+  try {
+    const response = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    // Handle AI description
+    if (data.aiDescription) {
+      desc.textContent = data.aiDescription;
+      speak(data.aiDescription);
+    } else if (data.alert && data.alert.level !== 'none') {
+      desc.textContent = data.alert.message;
+      speak(data.alert.message);
+    }
+
+    // Draw bounding boxes on canvas
+    if (data.boundingBoxes && data.boundingBoxes.length > 0) {
+      can.style.display = 'block';
+      vid.style.display = 'none';
+      drawBoundingBoxes(data.boundingBoxes);
+    }
+
+    // Handle navigation data
+    if (data.maps) {
+      renderNavigation(data.maps);
+      
+      // Speak first direction if available
+      if (data.maps.route && data.maps.route.steps && data.maps.route.steps.length > 0) {
+        const firstStep = data.maps.route.steps[0];
+        speak(firstStep.instruction);
       }
     }
 
-    async function passiveLoop(){
-      await ensureVideoReady();
-      videoCanvas.width = videoPreview.videoWidth || 640;
-      videoCanvas.height = videoPreview.videoHeight || 360;
-      const ctx = videoCanvas.getContext('2d');
-      await videoPreview.play();
+  } catch (err) {
+    showError('API Error: ' + err.message);
+    console.error('API call failed:', err);
+  }
+}
 
-      while(analyzing){
-        const now = Date.now();
-        if(now - lastApiAt >= Math.max(MIN_INTERVAL_MS, backoffMs)){
-          ctx.drawImage(videoPreview,0,0,videoCanvas.width,videoCanvas.height);
-          const b64 = videoCanvas.toDataURL('image/jpeg', 0.8);
+// Draw bounding boxes on canvas
+function drawBoundingBoxes(boxes) {
+  boxes.forEach((box, i) => {
+    const color = `hsl(${(i * 67) % 360}, 70%, 50%)`;
+    const x = box.box.left * can.width;
+    const y = box.box.top * can.height;
+    const w = box.box.width * can.width;
+    const h = box.box.height * can.height;
+    
+    // Draw box
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = color;
+    ctx.strokeRect(x, y, w, h);
+    
+    // Draw label
+    const label = `${box.label} ${Math.round(box.confidence)}%`;
+    ctx.font = 'bold 16px Arial';
+    const textWidth = ctx.measureText(label).width + 10;
+    
+    ctx.fillStyle = color;
+    ctx.fillRect(x, Math.max(0, y - 25), textWidth, 25);
+    
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, x + 5, Math.max(18, y - 7));
+  });
+}
 
-          await sendToAPI({
-            image: b64,
-            continuous: true,           // continuous mode
-            tell: false,                // do not narrate unless alert
-            warnOnly: true
-          }, videoDesc, videoDescText, videoErr, (boxes)=>{
-            // boxes only redraw when changed
-            const nextHash = JSON.stringify(boxes||[]);
-            if(nextHash !== lastBoxesHash){ redrawFrameAndBoxes(videoCanvas, videoPreview, boxes); lastBoxesHash = nextHash; }
-            else{ ctx.drawImage(videoPreview,0,0,videoCanvas.width,videoCanvas.height); }
-          }, (text)=>{ if(text) lastVideoDesc = text; });
+// Render navigation information
+function renderNavigation(maps) {
+  // Display map image
+  if (maps.map_url) {
+    document.getElementById('mapImg').src = maps.map_url;
+    document.getElementById('mapContainer').classList.remove('hidden');
+  }
 
-          lastApiAt = Date.now();
-        }
-        await new Promise(r=> setTimeout(r, 200));
-        if(videoPreview.ended) break;
-      }
-      setProcessing(videoDesc,false);
-    }
+  // Display directions
+  if (maps.route) {
+    const dirContainer = document.getElementById('directionsContainer');
+    const dirSummary = document.getElementById('directionsSummary');
+    const dirSteps = document.getElementById('directionsSteps');
+    
+    dirContainer.classList.remove('hidden');
+    dirSummary.innerHTML = `
+      <strong>${maps.route.total_distance}</strong> • 
+      <strong>${maps.route.total_duration}</strong>
+    `;
+    
+    dirSteps.innerHTML = '';
+    maps.route.steps.forEach((step, i) => {
+      const stepDiv = document.createElement('div');
+      stepDiv.className = 'step';
+      stepDiv.innerHTML = `
+        <strong>${i + 1}.</strong> ${step.instruction} 
+        <span style="color: #999;">(${step.distance}, ${step.duration})</span>
+      `;
+      dirSteps.appendChild(stepDiv);
+    });
+  }
 
-    function redrawFrameAndBoxes(canvas, video, boxes){
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      (boxes||[]).forEach((b,i)=>{
-        const color = `hsl(${(i*67)%360},70%,50%)`;
-        const W = canvas.width, H = canvas.height;
-        const x = b.box.left*W, y = b.box.top*H, w=b.box.width*W, h=b.box.height*H;
-        ctx.lineWidth = 3; ctx.strokeStyle = color; ctx.strokeRect(x,y,w,h);
-        const label = `${b.label} ${Math.round(b.confidence)}%`;
-        const tw = ctx.measureText(label).width + 10;
-        ctx.fillStyle = color; ctx.fillRect(x, Math.max(0,y-22), tw,22);
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 15px Arial'; ctx.fillText(label, x+5, Math.max(16,y-6));
-      });
-    }
-
-    // ===== Core API sender used by both modes =====
-    async function sendToAPI(payload, descNode, descTextNode, errNode, drawBoxesFn, setLastDescFn){
-      try{
-        setProcessing(descNode,true);
-        const res = await fetch(API_ENDPOINT, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify(payload)
+  // Display nearby places
+  if (maps.nearby) {
+    const nearbyContainer = document.getElementById('nearbyContainer');
+    const nearbyList = document.getElementById('nearbyList');
+    
+    nearbyList.innerHTML = '';
+    let hasNearby = false;
+    
+    ['hospitals', 'police', 'transit'].forEach(type => {
+      if (maps.nearby[type] && maps.nearby[type].length > 0) {
+        hasNearby = true;
+        maps.nearby[type].forEach(place => {
+          const placeDiv = document.createElement('div');
+          placeDiv.className = 'nearby-item';
+          
+          const typeLabel = type === 'hospitals' ? '🏥 Hospital' : 
+                          type === 'police' ? '🚔 Police' : 
+                          '🚇 Transit';
+          
+          const rating = place.rating ? `⭐ ${place.rating}` : '';
+          const openStatus = place.open_now === true ? '✅ Open' : 
+                           place.open_now === false ? '🔴 Closed' : '';
+          const distance = place.distance ? `${Math.round(place.distance)}m away` : '';
+          
+          placeDiv.innerHTML = `
+            <h5>${typeLabel}</h5>
+            <div><strong>${place.name}</strong></div>
+            <div style="font-size: 0.9rem; color: #666;">
+              ${place.address || 'Address unavailable'}<br>
+              ${rating} ${openStatus} ${distance}
+            </div>
+          `;
+          nearbyList.appendChild(placeDiv);
         });
-        const data = await res.json();
-
-        if(res.ok){
-          // Boxes
-          drawBoxesFn(data.boundingBoxes || []);
-
-          // Text policy:
-          // - If backend decided to speak (alert or tell): show & speak.
-          // - If silent (aiDescription == null): keep current text.
-          if(data.aiDescription != null){
-            descTextNode.textContent = data.aiDescription || '…';
-            show(descNode);
-            if(data.shouldSpeak && autoSpeak && !isSpeaking){ speak(data.aiDescription, descNode); }
-            setLastDescFn(data.aiDescription || '');
-          }else{
-            // stay silent; keep last description on screen
-            show(descNode);
-          }
-
-          clearError(errNode);
-          // gentle backoff reset on success
-          backoffMs = 0;
-        }else{
-          showError(errNode, 'API Error: ' + (data.error || res.status));
-          backoffMs = Math.min(5000, (backoffMs||1000)*1.5);
-        }
-      }catch(e){
-        showError(errNode, 'Connection error: ' + e.message);
-        backoffMs = Math.min(5000, (backoffMs||1000)*1.5);
-      }finally{
-        setProcessing(descNode,false);
       }
+    });
+    
+    if (hasNearby) {
+      nearbyContainer.classList.remove('hidden');
     }
-  </script>
+  }
+
+  // Update current location address
+  if (maps.location && maps.location.address) {
+    document.getElementById('currentLocation').textContent = 
+      `📍 ${maps.location.address}`;
+  }
+}
+
+// Initialize
+updateStatus('Click "Use My Location" to enable GPS');
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+  stopNavigation();
+});
+</script>
 </body>
 </html>

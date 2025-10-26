@@ -18,13 +18,16 @@ GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')
 
 # Cache globals
 last_desc, last_hash = "", None
+last_scene_labels = []
+frame_counter = 0
 
 
 def handler(event, context):
     """Main Lambda handler with comprehensive error handling"""
-    global last_desc, last_hash
+    global last_desc, last_hash, last_scene_labels, frame_counter
     
-    print(f"Received event: {json.dumps(event)}")
+    frame_counter += 1
+    print(f"=== REQUEST #{frame_counter} ===")
     
     try:
         # Handle CORS preflight
@@ -57,20 +60,30 @@ def handler(event, context):
             return cors_response(400, {'error': f'Image decode failed: {str(e)}'})
         
         # Extract parameters
+        is_continuous = body.get('continuous', False)
         tell = body.get('tell', False)
+        warn_only = body.get('warnOnly', True)
+        
+        # Navigation parameters
         user_lat = body.get('latitude')
         user_lng = body.get('longitude')
         dest_addr = body.get('destination_address')
+        dest_lat = body.get('destination_latitude')
+        dest_lng = body.get('destination_longitude')
         find_nearby = body.get('findNearby', False)
         get_route = body.get('getRoute', False)
+        navigation_mode = body.get('navigationMode', False)  # New: turn-by-turn mode
         
-        print(f"Parameters - tell: {tell}, lat: {user_lat}, lng: {user_lng}, dest: {dest_addr}")
+        print(f"Params - continuous: {is_continuous}, tell: {tell}, warn: {warn_only}")
+        print(f"Location - lat: {user_lat}, lng: {user_lng}, dest_addr: {dest_addr}")
+        print(f"Navigation - mode: {navigation_mode}, nearby: {find_nearby}, route: {get_route}")
         
         # Vision analysis
         labels = {}
         text = {'TextDetections': []}
         boxes = []
         alert = {"level": "none", "message": ""}
+        scene_changed = False
         
         if rekognition:
             try:
@@ -78,9 +91,15 @@ def handler(event, context):
                 labels = rekognition.detect_labels(
                     Image={'Bytes': img_bytes},
                     MaxLabels=20,
-                    MinConfidence=60
+                    MinConfidence=60,
+                    Features=['GENERAL_LABELS', 'IMAGE_PROPERTIES']
                 )
                 print(f"Labels detected: {len(labels.get('Labels', []))}")
+                
+                # Scene change detection
+                current_labels = [l['Name'] for l in labels.get('Labels', [])[:10]]
+                scene_changed = has_scene_changed(current_labels)
+                
             except Exception as e:
                 print(f"Rekognition detect_labels error: {e}")
                 print(traceback.format_exc())
@@ -101,34 +120,55 @@ def handler(event, context):
         else:
             print("WARNING: Rekognition client not initialized")
         
-        # AI narration
+        # AI narration logic
         ai_text = None
+        should_speak = False
+        
         if alert['level'] != 'none':
+            # Priority: Safety alerts
             ai_text = alert['message']
-            print(f"Alert triggered: {ai_text}")
+            should_speak = True
+            print(f"[ALERT] {ai_text}")
+            
         elif tell:
-            print("Generating AI description...")
-            ai_text = describe_scene(labels, text, img_b64)
-            last_desc, last_hash = ai_text, str(labels)
-        elif last_hash == str(labels):
-            ai_text = last_desc
+            # On-demand narration
+            if (not is_continuous) or scene_changed or not last_desc:
+                print("Generating full AI description...")
+                ai_text = describe_scene(labels, text, img_b64)
+                last_desc = ai_text
+                last_scene_labels = [l['Name'] for l in labels.get('Labels', [])[:10]]
+                last_hash = str(labels)
+            else:
+                ai_text = last_desc
+            should_speak = True
+            
+        elif navigation_mode and is_continuous:
+            # Navigation mode: minimal updates, only on scene change
+            if scene_changed:
+                print("Scene changed during navigation - brief update")
+                ai_text = describe_scene_brief(labels)
+                last_desc = ai_text
+                should_speak = True
         
         # Build response data
         data = {
             "aiDescription": ai_text,
             "alert": alert,
             "boundingBoxes": boxes,
-            "shouldSpeak": bool(ai_text),
+            "shouldSpeak": should_speak,
+            "sceneChanged": scene_changed,
+            "imageWidth": labels.get('ImageProperties', {}).get('Width', 0),
+            "imageHeight": labels.get('ImageProperties', {}).get('Height', 0)
         }
         
         # Maps & routing
         if GOOGLE_MAPS_API_KEY and user_lat and user_lng:
-            if dest_addr or find_nearby or get_route:
+            if dest_addr or dest_lat or find_nearby or get_route or navigation_mode:
                 print("Processing maps data...")
                 try:
                     data["maps"] = handle_maps(
-                        user_lat, user_lng, dest_addr, 
-                        find_nearby, get_route, alert["level"]
+                        user_lat, user_lng, dest_lat, dest_lng, dest_addr,
+                        find_nearby, get_route, navigation_mode, alert["level"]
                     )
                 except Exception as e:
                     print(f"Maps processing error (non-fatal): {e}")
@@ -149,33 +189,45 @@ def handler(event, context):
 
 def clean_and_decode_image(img_b64):
     """Clean and decode base64 image data"""
-    # Remove data URL prefix if present
     if 'base64,' in img_b64:
         img_b64 = img_b64.split('base64,')[1]
     
-    # Remove whitespace
     img_b64 = img_b64.strip().replace('\n', '').replace('\r', '').replace(' ', '')
-    
-    # Decode
     img_bytes = base64.b64decode(img_b64)
     
-    # Validate size
     if len(img_bytes) < 100:
         raise ValueError(f"Image data too small: {len(img_bytes)} bytes")
     
-    # Check if it looks like valid image data (JPEG starts with FFD8, PNG with 89504E47)
     if not (img_bytes[:2] == b'\xff\xd8' or img_bytes[:4] == b'\x89PNG'):
         raise ValueError("Image data doesn't appear to be valid JPEG or PNG")
     
     return img_bytes
 
 
-def handle_maps(lat, lng, dest_addr, find_nearby, get_route, alert_level):
+def has_scene_changed(current_labels):
+    """Detect if scene has significantly changed"""
+    global last_scene_labels
+    
+    if not last_scene_labels:
+        return True
+    
+    current_set = set(current_labels)
+    last_set = set(last_scene_labels)
+    added = current_set - last_set
+    removed = last_set - current_set
+    change_count = len(added) + len(removed)
+    total = max(len(current_set), len(last_set), 1)
+    change_percentage = (change_count / total) * 100
+    
+    print(f"Scene change: {change_percentage:.1f}% (added: {added}, removed: {removed})")
+    return change_percentage > 30
+
+
+def handle_maps(lat, lng, dest_lat, dest_lng, dest_addr, find_nearby, get_route, navigation_mode, alert_level):
     """Handle all maps-related operations"""
     m = {"location": {"latitude": lat, "longitude": lng}}
     
     try:
-        # Import requests here to handle import errors gracefully
         import requests
         
         # Reverse geocode current location
@@ -186,33 +238,60 @@ def handle_maps(lat, lng, dest_addr, find_nearby, get_route, alert_level):
         except Exception as e:
             print(f"Reverse geocode error: {e}")
         
-        # Geocode destination
-        dest_lat, dest_lng = None, None
-        if dest_addr:
+        # Geocode destination if address provided
+        if dest_addr and not (dest_lat and dest_lng):
             try:
                 geo = geocode(dest_addr, requests)
                 if geo:
                     dest_lat, dest_lng = geo
+                    m["destination"] = {
+                        "latitude": dest_lat,
+                        "longitude": dest_lng,
+                        "address": dest_addr
+                    }
             except Exception as e:
                 print(f"Geocode error: {e}")
         
         # Find nearby places
         if find_nearby or alert_level != 'none':
             try:
-                m["nearby"] = {
-                    "hospitals": nearby(lat, lng, "hospital", requests),
-                    "police": nearby(lat, lng, "police", requests),
-                    "transit": nearby(lat, lng, "transit_station", requests),
-                }
+                nearby_data = {}
+                
+                hospitals = nearby(lat, lng, "hospital", requests, radius=3000)
+                if hospitals:
+                    nearby_data["hospitals"] = hospitals[:3]
+                
+                police = nearby(lat, lng, "police", requests, radius=3000)
+                if police:
+                    nearby_data["police_stations"] = police[:3]
+                
+                transit = nearby(lat, lng, "transit_station", requests, radius=1000)
+                if transit:
+                    nearby_data["transit_stations"] = transit[:3]
+                
+                if nearby_data:
+                    m["nearby"] = nearby_data
+                    
             except Exception as e:
                 print(f"Nearby search error: {e}")
         
         # Get route directions
-        if get_route and dest_lat and dest_lng:
+        if (get_route or navigation_mode) and dest_lat and dest_lng:
             try:
                 route = directions(lat, lng, dest_lat, dest_lng, requests)
                 if route:
                     m["route"] = route
+                    
+                    # Add next step guidance for navigation mode
+                    if navigation_mode and route.get("steps"):
+                        next_step = route["steps"][0]
+                        m["navigation"] = {
+                            "next_instruction": next_step["instruction"],
+                            "distance_to_next": next_step["distance"],
+                            "total_remaining": route["total_distance"],
+                            "eta": route["total_duration"]
+                        }
+                        
             except Exception as e:
                 print(f"Directions error: {e}")
         
@@ -222,7 +301,12 @@ def handle_maps(lat, lng, dest_addr, find_nearby, get_route, alert_level):
                 h = m["nearby"]["hospitals"][0]
                 r = directions(lat, lng, h["location"]["lat"], h["location"]["lng"], requests)
                 if r:
-                    m["emergency_route"] = {"destination": h["name"], "directions": r}
+                    m["emergency_route"] = {
+                        "destination": h["name"],
+                        "address": h["address"],
+                        "distance": h["distance"],
+                        "directions": r
+                    }
             except Exception as e:
                 print(f"Emergency route error: {e}")
         
@@ -287,7 +371,7 @@ def nearby(lat, lng, kind, requests, radius=2000):
             timeout=5
         )
         if r.ok:
-            for p in r.json().get("results", [])[:3]:
+            for p in r.json().get("results", [])[:5]:
                 loc = p["geometry"]["location"]
                 out.append({
                     "name": p["name"],
@@ -297,6 +381,7 @@ def nearby(lat, lng, kind, requests, radius=2000):
                     "location": loc,
                     "distance": dist(lat, lng, loc["lat"], loc["lng"])
                 })
+            out.sort(key=lambda x: x["distance"])
     except Exception as e:
         print(f"Nearby search request error for {kind}: {e}")
     return out
@@ -320,17 +405,20 @@ def directions(lat1, lng1, lat2, lng2, requests):
             steps = []
             for s in leg["steps"]:
                 txt = s["html_instructions"].replace("<b>", "").replace("</b>", "")
+                txt = txt.replace('<div style="font-size:0.9em">', ' ').replace('</div>', '')
                 steps.append({
                     "instruction": txt,
                     "distance": s["distance"]["text"],
-                    "duration": s["duration"]["text"]
+                    "duration": s["duration"]["text"],
+                    "maneuver": s.get("maneuver", "straight")
                 })
             return {
                 "total_distance": leg["distance"]["text"],
                 "total_duration": leg["duration"]["text"],
                 "steps": steps,
                 "start_address": leg.get("start_address"),
-                "end_address": leg.get("end_address")
+                "end_address": leg.get("end_address"),
+                "polyline": r.json()["routes"][0]["overview_polyline"]["points"]
             }
     except Exception as e:
         print(f"Directions request error: {e}")
@@ -355,7 +443,7 @@ def static_map(lat, lng, dlat=None, dlng=None):
 
 def dist(a1, b1, a2, b2):
     """Calculate distance between two coordinates in meters"""
-    R = 6371000  # Earth radius in meters
+    R = 6371000
     dlat = radians(a2 - a1)
     dlng = radians(b2 - b1)
     h = (sin(dlat / 2) ** 2 + 
@@ -387,43 +475,87 @@ def detect_pedestrian_alert(boxes):
         people = [b for b in boxes 
                  if b["label"].lower() in ("person", "people", "human")]
         if not people:
-            return {"level": "none", "message": ""}
+            return {"level": "none", "message": "", "count": 0}
         
-        bx = people[0]["box"]
-        size = bx["height"]
-        center = bx["left"] + bx["width"] / 2
+        def score(p):
+            bx = p["box"]
+            center_x = bx["left"] + bx["width"] / 2.0
+            centered = 1.0 - abs(center_x - 0.5) * 2.0
+            size = bx["height"]
+            return (centered * 0.6) + (min(size, 1.0) * 0.4)
         
-        if 0.35 <= center <= 0.65 and size > 0.25:
-            if size < 0.35:
-                msg = "Warning: pedestrian ahead"
-            else:
-                msg = "Alert: very close pedestrian ahead"
-            return {"level": "warning", "message": msg}
+        people_sorted = sorted(people, key=score, reverse=True)
+        nearest = people_sorted[0]
+        bx = nearest["box"]
+        center_x = bx["left"] + bx["width"] / 2.0
+        size_h = bx["height"]
+        
+        is_centered = (0.35 <= center_x <= 0.65)
+        very_close = size_h >= 0.35
+        near = size_h >= 0.25
+        
+        if is_centered and (very_close or near):
+            proximity = "very close" if very_close else "near"
+            msg = f"Warning: pedestrian {proximity} ahead."
+            return {
+                "level": "warning",
+                "message": msg,
+                "count": len(people),
+                "nearestBox": nearest
+            }
+            
     except Exception as e:
         print(f"Error detecting pedestrian: {e}")
     
-    return {"level": "none", "message": ""}
+    return {"level": "none", "message": "", "count": 0}
 
 
 def describe_scene(labels, text, img_b64):
-    """Generate AI description of scene"""
-    objs = [l["Name"] for l in labels.get("Labels", [])[:8]]
+    """Generate full AI description of scene"""
+    people_objs = []
+    env_objs = []
+    item_objs = []
+    
+    for label in labels.get('Labels', [])[:15]:
+        name = label['Name']
+        conf = int(label.get('Confidence', 0))
+        instances = len(label.get('Instances', []))
+        
+        if name.lower() in ['person', 'people', 'human', 'face', 'head']:
+            people_objs.append(f"{name} ({conf}%)" + (f" - {instances} detected" if instances > 0 else ""))
+        elif name.lower() in ['furniture', 'room', 'indoor', 'outdoor', 'building', 'wall', 'floor', 'street', 'road', 'sidewalk']:
+            env_objs.append(f"{name} ({conf}%)")
+        else:
+            item_objs.append(f"{name} ({conf}%)")
+    
+    text_items = [t.get('DetectedText', '') for t in text.get('TextDetections', [])
+                  if t.get('Type') == 'LINE' and t.get('Confidence', 0) > 70]
+    
+    prompt = f"""You assist a blind user. Describe only what is visible now, clearly and briefly (<=80 words).
+Prioritize obstacles, people proximity, orientation cues, and readable text.
+People: {', '.join([o.split('(')[0].strip() for o in people_objs]) if people_objs else 'None'}
+Environment: {', '.join([o.split('(')[0].strip() for o in env_objs[:5]]) if env_objs else 'Unknown'}
+Objects: {', '.join([o.split('(')[0].strip() for o in item_objs[:6]]) if item_objs else 'None'}
+Text: {', '.join(text_items[:3]) if text_items else 'None'}
+Format 2–3 sentences. Use spatial terms (left, right, ahead, near)."""
     
     if not bedrock:
-        return f"Objects detected: {', '.join(objs[:5])}"
-    
-    prompt = (
-        f"Describe scene briefly for blind user. "
-        f"Focus on obstacles and direction cues. "
-        f"Objects: {', '.join(objs)}"
-    )
+        parts = []
+        if env_objs:
+            parts.append(f"Environment: {', '.join([o.split('(')[0].strip() for o in env_objs[:3]])}")
+        if people_objs:
+            parts.append(f"People: {', '.join([o.split('(')[0].strip() for o in people_objs[:2]])}")
+        if item_objs:
+            parts.append(f"Objects: {', '.join([o.split('(')[0].strip() for o in item_objs[:3]])}")
+        return ". ".join(parts) if parts else "Scene detected"
     
     try:
+        # Try Sonnet 4 first
         response = bedrock.invoke_model(
-            modelId='anthropic.claude-3-haiku-20240307-v1:0',
+            modelId='anthropic.claude-sonnet-4-20250514',
             body=json.dumps({
                 "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 150,
+                "max_tokens": 300,
                 "messages": [{
                     "role": "user",
                     "content": [
@@ -442,9 +574,42 @@ def describe_scene(labels, text, img_b64):
         )
         result = json.loads(response["body"].read())
         return result["content"][0]["text"]
-    except Exception as e:
-        print(f"Bedrock error: {e}")
-        return f"Objects: {', '.join(objs[:5])}"
+        
+    except Exception as sonnet_error:
+        print(f"Sonnet 4 failed, falling back to Haiku: {sonnet_error}")
+        try:
+            response = bedrock.invoke_model(
+                modelId='anthropic.claude-3-haiku-20240307-v1:0',
+                body=json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 300,
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/jpeg",
+                                    "data": img_b64
+                                }
+                            },
+                            {"type": "text", "text": prompt}
+                        ]
+                    }]
+                })
+            )
+            result = json.loads(response["body"].read())
+            return result["content"][0]["text"]
+        except Exception as haiku_error:
+            print(f"All Bedrock models failed: {haiku_error}")
+            return f"Objects detected: {', '.join([l['Name'] for l in labels.get('Labels', [])[:5]])}"
+
+
+def describe_scene_brief(labels):
+    """Generate brief scene description for navigation mode"""
+    objs = [l['Name'] for l in labels.get('Labels', [])[:5]]
+    return f"Environment update: {', '.join(objs)}"
 
 
 def cors_response(status_code, body):
